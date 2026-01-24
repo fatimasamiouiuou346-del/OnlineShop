@@ -1,0 +1,41 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row">
+    <!-- 左侧分类 (Block C3) -->
+    <div class="col-md-3">
+        <div class="list-group">
+            <a href="{% url 'core:product_list' %}" class="list-group-item list-group-item-action active">所有分类</a>
+            {% for cat in categories %}
+            <a href="?category={{ cat.id }}" class="list-group-item list-group-item-action">{{ cat.name }}</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 右侧商品列表 (Block A3) -->
+    <div class="col-md-9">
+        <div class="row">
+            {% for product in products %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <!-- 显示第一张图片 (Block B1) -->
+                    {% if product.images.first %}
+                        <img src="{{ product.images.first.image.url }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">无图</div>
+                    {% endif %}
+                    
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product.name }}</h5>
+                        <p class="card-text text-danger fw-bold">¥{{ product.price }}</p>
+                        <a href="{% url 'core:product_detail' product.id %}" class="btn btn-primary w-100">查看详情</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+                <div class="alert alert-warning">没找到相关商品。</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
