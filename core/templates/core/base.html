@@ -3,35 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的商城</title>
-    <!-- 引入 Bootstrap 为了好看 -->
+    <title>我的在线商城</title>
+    <!-- 引入 Bootstrap 样式库，为了让界面瞬间变好看 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .product-card img { height: 200px; object-fit: cover; }
+    </style>
 </head>
 <body>
-    <!-- 顶部导航栏 -->
+    <!-- 导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="{% url 'core:product_list' %}">🛒 在线商城</a>
-            
-            <!-- 搜索框 (Block A4) -->
-            <form class="d-flex ms-auto" method="get" action="{% url 'core:product_list' %}">
-                <input class="form-control me-2" type="search" name="q" placeholder="搜商品..." value="{{ request.GET.q|default:'' }}">
-                <button class="btn btn-outline-light" type="submit">搜索</button>
-            </form>
-            
-            <div class="navbar-nav ms-3">
-                {% if user.is_authenticated %}
-                    <span class="nav-link">你好, {{ user.username }}</span>
-                {% else %}
-                    <a class="nav-link" href="/admin/">商家登录</a>
-                {% endif %}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'core:product_list' %}">首页</a></li>
+                </ul>
+                <!-- Block A4: 搜索框 -->
+                <form class="d-flex" method="get" action="{% url 'core:product_list' %}">
+                    <input class="form-control me-2" type="search" name="q" placeholder="搜索商品..." value="{{ request.GET.q|default:'' }}">
+                    <button class="btn btn-outline-light" type="submit">搜索</button>
+                </form>
+                <div class="navbar-nav ms-3">
+                    {% if user.is_authenticated %}
+                        <span class="nav-link text-light me-2">你好, {{ user.username }}</span>
+                        <!-- 购物车链接 (Block A8) -->
+                        <a href="{% url 'core:cart_detail' %}" class="btn btn-outline-warning me-2">
+                            🛒 购物车 <span class="badge bg-warning text-dark">{{ cart_item_count|default:"0" }}</span>
+                        </a>
+                        <!-- 注销表单 (为了安全用 post) -->
+                        <form action="{% url 'core:logout' %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">注销</button>
+                        </form>
+                    {% else %}
+                        <a class="nav-link" href="{% url 'core:login' %}">登录</a>
+                        <a class="nav-link" href="{% url 'core:register' %}">注册</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
 
     <div class="container">
+        <!-- 这里是每个页面的具体内容 -->
         {% block content %}{% endblock %}
     </div>
+
+    <footer class="py-4 mt-5 bg-light text-center">
+        <p class="text-muted">© 2026 Online Shopping System Project</p>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -1,0 +1,55 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span>订单详情 #{{ order.id }}</span>
+        <span class="badge bg-warning text-dark">{{ order.get_status_display }}</span>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h5 class="text-muted">收货信息</h5>
+                <p>{{ order.shipping_address_snapshot }}</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <h5 class="text-muted">下单时间</h5>
+                <p>{{ order.created_at|date:"Y-m-d H:i:s" }}</p>
+            </div>
+        </div>
+
+        <h5 class="mb-3">商品清单</h5>
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>商品名称</th>
+                    <th>购买时单价</th>
+                    <th>数量</th>
+                    <th>小计</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product_name_snapshot }}</td>
+                    <td>¥{{ item.unit_price_snapshot }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>¥{{ item.unit_price_snapshot|default:0 }} * {{ item.quantity }}</td> <!-- 简单计算展示 -->
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="text-end fw-bold">订单总计:</td>
+                    <td class="text-danger fw-bold fs-4">¥{{ order.total_amount }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="text-center mt-4">
+            <a href="{% url 'core:order_list' %}" class="btn btn-outline-secondary">返回订单列表</a>
+            <a href="{% url 'core:product_list' %}" class="btn btn-primary">继续购物</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
