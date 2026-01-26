@@ -36,4 +36,5 @@ urlpatterns = [
     path('orders/', views.order_list, name='order_list'),
     # 订单详情
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
+    path('cart/update/<int:item_id>/', views.update_cart_quantity, name='update_cart_quantity'),
 ]

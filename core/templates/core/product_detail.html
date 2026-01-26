@@ -2,20 +2,17 @@
 
 {% block content %}
 <div class="row">
-    <!-- 左侧：多图展示 (Block B1) -->
-    <!-- 这是一个轮播图组件，支持多张图片切换 -->
+    <!-- Left: Product Images (Block B1) -->
     <div class="col-md-6">
         {% if product.images.all %}
             <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner">
                     {% for img in product.images.all %}
                     <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                        <!-- 图片使用了圆角样式 (rounded) -->
                         <img src="{{ img.image.url }}" class="d-block w-100 rounded" alt="{{ product.name }}">
                     </div>
                     {% endfor %}
                 </div>
-                <!-- 左右切换按钮 -->
                 <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
                     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                 </button>
@@ -24,10 +21,9 @@
                 </button>
             </div>
             
-            <!-- 下方的小缩略图预览 -->
+            <!-- Thumbnails -->
             <div class="d-flex mt-2">
                 {% for img in product.images.all %}
-                <!-- 修复了这里的 onclick 事件，使用了 Bootstrap 5 的 data-bs-target 和 data-bs-slide-to 属性，这是最标准且不容易出错的方法 -->
                 <img src="{{ img.image.url }}" 
                      class="img-thumbnail me-2" 
                      style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" 
@@ -37,12 +33,11 @@
                 {% endfor %}
             </div>
         {% else %}
-            <!-- 如果后台没传图片，显示占位符 -->
-            <div class="alert alert-secondary text-center py-5">暂无图片</div>
+            <div class="alert alert-secondary text-center py-5">No Image Available</div>
         {% endif %}
     </div>
 
-    <!-- 右侧：商品信息 & 购买操作区 (Block A6 & A7) -->
+    <!-- Right: Product Info & Purchase (Block A6 & A7) -->
     <div class="col-md-6">
         <h1 class="mb-3 fw-bold">{{ product.name }}</h1>
         <h3 class="text-danger mb-4">¥{{ product.price }}</h3>
@@ -50,40 +45,37 @@
         <div class="card mb-4 shadow-sm border-0 bg-light">
             <div class="card-body">
                 <p class="mb-3">
-                    <strong>库存状态:</strong> 
+                    <strong>Availability:</strong> 
                     {% if product.stock_quantity > 0 %}
-                        <span class="text-success">有货 ({{ product.stock_quantity }}件)</span>
+                        <span class="text-success">In Stock ({{ product.stock_quantity }})</span>
                     {% else %}
-                        <span class="text-danger">暂时缺货</span>
+                        <span class="text-danger">Out of Stock</span>
                     {% endif %}
                 </p>
                 
-                <!-- 核心表单：提交数据到 add_to_cart 视图 -->
+                <!-- Add to Cart Form -->
                 <form action="{% url 'core:add_to_cart' product.id %}" method="post">
                     {% csrf_token %}
                     <div class="row g-3 align-items-center mb-3">
                         <div class="col-auto">
-                            <label class="col-form-label fw-bold">购买数量:</label>
+                            <label class="col-form-label fw-bold">Quantity:</label>
                         </div>
                         <div class="col-auto">
-                            <!-- 限制数量：最小1，最大不能超过库存 -->
                             <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ product.stock_quantity }}" style="width: 100px;">
                         </div>
                     </div>
                     
-                    <!-- 根据登录状态显示不同按钮 -->
                     {% if user.is_authenticated %}
                         {% if product.stock_quantity > 0 %}
                             <button type="submit" class="btn btn-lg btn-warning w-100 fw-bold">
-                                <i class="bi bi-cart-plus"></i> 加入购物车
+                                <i class="bi bi-cart-plus"></i> Add to Cart
                             </button>
                         {% else %}
-                            <button type="button" class="btn btn-lg btn-secondary w-100" disabled>已售罄</button>
+                            <button type="button" class="btn btn-lg btn-secondary w-100" disabled>Sold Out</button>
                         {% endif %}
                     {% else %}
-                        <!-- 这里的 ?next={{ request.path }} 很聪明，登录后会自动跳回当前商品页 -->
                         <a href="{% url 'core:login' %}?next={{ request.path }}" class="btn btn-lg btn-primary w-100">
-                            登录后购买
+                            Login to Buy
                         </a>
                     {% endif %}
                 </form>
@@ -91,19 +83,18 @@
             </div>
         </div>
 
-        <!-- 商品详细描述 (Block C1: 支持HTML) -->
+        <!-- Description (Block C1) -->
         <div class="mt-4">
-            <h5 class="border-bottom pb-2">商品详情</h5>
+            <h5 class="border-bottom pb-2">Description</h5>
             <div class="product-description mt-3">
-                <!-- safe 过滤器允许渲染后台输入的 HTML 代码 -->
                 {{ product.description_html|safe }}
             </div>
         </div>
 
-        <!-- 商品规格参数 (Block C2) -->
+        <!-- Attributes (Block C2) -->
         {% if product.attributes.exists %}
         <div class="mt-4">
-            <h5 class="border-bottom pb-2">规格参数</h5>
+            <h5 class="border-bottom pb-2">Specifications</h5>
             <table class="table table-striped mt-2">
                 {% for attr in product.attributes.all %}
                 <tr>

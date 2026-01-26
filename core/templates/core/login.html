@@ -5,10 +5,9 @@
     <div class="col-md-4">
         <div class="card shadow-sm mt-5">
             <div class="card-body">
-                <h3 class="card-title text-center mb-4">用户登录</h3>
+                <h3 class="card-title text-center mb-4">Login</h3>
                 <form method="post">
                     {% csrf_token %}
-                    <!-- 快速渲染表单字段 -->
                     {% for field in form %}
                     <div class="mb-3">
                         <label class="form-label">{{ field.label }}</label>
@@ -18,16 +17,15 @@
                         {% endif %}
                     </div>
                     {% endfor %}
-                    <button type="submit" class="btn btn-primary w-100">登录</button>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
                 </form>
                 <div class="text-center mt-3">
-                    <p>还没有账号？ <a href="{% url 'core:register' %}">去注册</a></p>
+                    <p>Don't have an account? <a href="{% url 'core:register' %}">Register here</a></p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<!-- 给 input 添加 Bootstrap 样式的简单脚本 -->
 <script>
     var inputs = document.querySelectorAll('input');
     inputs.forEach(function(input){

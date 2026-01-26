@@ -1,25 +1,25 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<h2 class="mb-4">我的订单历史</h2>
+<h2 class="mb-4">My Order History</h2>
 
 <div class="list-group">
     {% for order in orders %}
     <a href="{% url 'core:order_detail' order.id %}" class="list-group-item list-group-item-action" aria-current="true">
         <div class="d-flex w-100 justify-content-between">
-            <h5 class="mb-1">订单号 #{{ order.id }}</h5>
+            <h5 class="mb-1">Order #{{ order.id }}</h5>
             <small class="text-muted">{{ order.created_at|date:"Y-m-d H:i" }}</small>
         </div>
         <div class="d-flex justify-content-between align-items-center mt-2">
             <div>
                 <span class="badge bg-primary rounded-pill">{{ order.get_status_display }}</span>
-                <span class="ms-2 text-muted">包含 {{ order.items.count }} 件商品</span>
+                <span class="ms-2 text-muted">{{ order.items.count }} items</span>
             </div>
             <strong class="text-danger fs-5">¥{{ order.total_amount }}</strong>
         </div>
     </a>
     {% empty %}
-    <div class="alert alert-warning">你还没有下过单。</div>
+    <div class="alert alert-warning">You have no orders yet.</div>
     {% endfor %}
 </div>
 {% endblock %}

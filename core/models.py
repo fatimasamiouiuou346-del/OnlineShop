@@ -151,3 +151,20 @@ class OrderStatusHistory(models.Model):
     status = models.CharField("状态", max_length=20)
     changed_at = models.DateTimeField("变更时间", auto_now_add=True)
     comments = models.TextField("备注", blank=True, null=True)
+
+# ==========================================
+# 5. 用户生成内容 (Block T) -- 之前缺失的部分
+# ==========================================
+class Review(models.Model):
+    """
+    Block T: 商品评价与评分
+    """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    # 限制评分只能是 1-5
+    rating = models.IntegerField("评分", choices=[(i, str(i)) for i in range(1, 6)])
+    comment = models.TextField("评论内容", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review by {self.user.username} on {self.product.name}"

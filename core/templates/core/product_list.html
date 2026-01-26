@@ -7,7 +7,7 @@
         <div class="list-group">
             <!-- 判断当前是否有分类参数，如果没有，"所有分类"高亮 -->
             <a href="{% url 'core:product_list' %}" class="list-group-item list-group-item-action {% if not request.GET.category %}active{% endif %}">
-                所有分类
+                All Categories
             </a>
             {% for cat in categories %}
             <!-- 点击分类时，保留当前的搜索关键词 q -->
@@ -29,19 +29,19 @@
                     {% if product.images.first %}
                         <img src="{{ product.images.first.image.url }}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="{{ product.name }}">
                     {% else %}
-                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">无图</div>
+                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">No Image</div>
                     {% endif %}
                     
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title">{{ product.name }}</h5>
                         <p class="card-text text-danger fw-bold">¥{{ product.price }}</p>
                         <!-- mt-auto 让按钮始终沉底，保持卡片高度整齐 -->
-                        <a href="{% url 'core:product_detail' product.id %}" class="btn btn-primary w-100 mt-auto">查看详情</a>
+                        <a href="{% url 'core:product_detail' product.id %}" class="btn btn-primary w-100 mt-auto">View Details</a>
                     </div>
                 </div>
             </div>
             {% empty %}
-                <div class="alert alert-warning">没找到相关商品。</div>
+                <div class="alert alert-warning">No products found.</div>
             {% endfor %}
         </div>
 
@@ -55,10 +55,10 @@
                 <!-- 上一页按钮 -->
                 {% if products.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ products.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">上一页</a>
+                    <a class="page-link" href="?page={{ products.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Previous</a>
                 </li>
                 {% else %}
-                <li class="page-item disabled"><span class="page-link">上一页</span></li>
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
                 {% endif %}
 
                 <!-- 页码循环 -->
@@ -75,10 +75,10 @@
                 <!-- 下一页按钮 -->
                 {% if products.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ products.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">下一页</a>
+                    <a class="page-link" href="?page={{ products.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Next</a>
                 </li>
                 {% else %}
-                <li class="page-item disabled"><span class="page-link">下一页</span></li>
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
                 {% endif %}
             </ul>
         </nav>

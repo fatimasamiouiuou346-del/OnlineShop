@@ -1,47 +1,48 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的在线商城</title>
-    <!-- 引入 Bootstrap 样式库，为了让界面瞬间变好看 -->
+    <title>My Online Shop</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .product-card img { height: 200px; object-fit: cover; }
     </style>
 </head>
 <body>
-    <!-- 导航栏 -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'core:product_list' %}">🛒 在线商城</a>
+            <a class="navbar-brand" href="{% url 'core:product_list' %}">🛒 Online Shop</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:product_list' %}">首页</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'core:product_list' %}">Home</a></li>
                 </ul>
-                <!-- Block A4: 搜索框 -->
+                <!-- Search Form -->
                 <form class="d-flex" method="get" action="{% url 'core:product_list' %}">
-                    <input class="form-control me-2" type="search" name="q" placeholder="搜索商品..." value="{{ request.GET.q|default:'' }}">
-                    <button class="btn btn-outline-light" type="submit">搜索</button>
+                    <input class="form-control me-2" type="search" name="q" placeholder="Search products..." value="{{ request.GET.q|default:'' }}">
+                    <button class="btn btn-outline-light" type="submit">Search</button>
                 </form>
+                
                 <div class="navbar-nav ms-3">
                     {% if user.is_authenticated %}
-                        <span class="nav-link text-light me-2">你好, {{ user.username }}</span>
-                        <!-- 购物车链接 (Block A8) -->
+                        <span class="nav-link text-light me-2">Hi, {{ user.username }}</span>
+                        <!-- Cart Link -->
                         <a href="{% url 'core:cart_detail' %}" class="btn btn-outline-warning me-2">
-                            🛒 购物车 <span class="badge bg-warning text-dark">{{ cart_item_count|default:"0" }}</span>
+                            🛒 Cart <span class="badge bg-warning text-dark">{{ cart_item_count|default:"0" }}</span>
                         </a>
-                        <!-- 注销表单 (为了安全用 post) -->
+                        <!-- Logout Form -->
                         <form action="{% url 'core:logout' %}" method="post" class="d-inline">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">注销</button>
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
                         </form>
                     {% else %}
-                        <a class="nav-link" href="{% url 'core:login' %}">登录</a>
-                        <a class="nav-link" href="{% url 'core:register' %}">注册</a>
+                        <a class="nav-link" href="{% url 'core:login' %}">Login</a>
+                        <a class="nav-link" href="{% url 'core:register' %}">Register</a>
                     {% endif %}
                 </div>
             </div>
@@ -49,7 +50,7 @@
     </nav>
 
     <div class="container">
-        <!-- 这里是每个页面的具体内容 -->
+        <!-- Page Content -->
         {% block content %}{% endblock %}
     </div>
 

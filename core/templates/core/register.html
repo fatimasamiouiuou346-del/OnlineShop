@@ -5,7 +5,7 @@
     <div class="col-md-4">
         <div class="card shadow-sm mt-5">
             <div class="card-body">
-                <h3 class="card-title text-center mb-4">新用户注册</h3>
+                <h3 class="card-title text-center mb-4">Create Account</h3>
                 <form method="post">
                     {% csrf_token %}
                     {% for field in form %}
@@ -18,10 +18,10 @@
                         {% endif %}
                     </div>
                     {% endfor %}
-                    <button type="submit" class="btn btn-success w-100">注册</button>
+                    <button type="submit" class="btn btn-success w-100">Register</button>
                 </form>
                 <div class="text-center mt-3">
-                    <p>已有账号？ <a href="{% url 'core:login' %}">去登录</a></p>
+                    <p>Already have an account? <a href="{% url 'core:login' %}">Login here</a></p>
                 </div>
             </div>
         </div>
