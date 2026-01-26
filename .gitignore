@@ -1,22 +1,25 @@
-Python 缓存垃圾
+Python
 
 pycache/
 *.py[cod]
 *$py.class
 
-虚拟环境 (队友需要自己创建，不能用你的)
+Django
+
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+Virtual Environment
 
 venv/
 env/
+.env
 
-数据库 (本地测试数据不上传，以免覆盖队友的数据)
-
-db.sqlite3
-
-VS Code 配置
+IDE / Editor
 
 .vscode/
-
-媒体文件 (上传的代码通常不包含测试用的图片)
-
-media/
+.idea/
+*.swp
