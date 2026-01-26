@@ -1,0 +1,19 @@
+Django standard ignores
+
+*.log
+*.pot
+*.pyc
+pycache/
+db.sqlite3
+media/
+staticfiles/
+
+Virtual environment
+
+venv/
+env/
+.env
+
+VS Code specific
+
+.vscode/

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.db import transaction
 from .models import Product, Category, Cart, CartItem, Order, OrderItem
+from django.core.paginator import Paginator
 
 # 【改动点 1】引入我们在 core/forms.py 里写的自定义表单
 from .forms import CustomUserCreationForm
@@ -31,6 +32,9 @@ def product_list(request):
     if category_id:
         products = products.filter(category_id=category_id)
 
+    paginator = Paginator(products, 9)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     context = {
         'products': products,
         'categories': Category.objects.all()
@@ -174,3 +178,14 @@ def order_detail(request, pk):
     """Block A13: 订单详情"""
     order = get_object_or_404(Order, pk=pk, user=request.user)
     return render(request, 'core/order_detail.html', {'order': order})
+@login_required(login_url='core:login')
+def update_cart_quantity(request, item_id):
+    if request.method == 'POST':
+        quantity = int(request.POST.get('quantity'))
+        cart_item = get_object_or_404(CartItem, id=item_id, cart__user=request.user)
+        if quantity > 0:
+            cart_item.quantity = quantity
+            cart_item.save()
+        else:
+            cart_item.delete()
+    return redirect('core:cart_detail')

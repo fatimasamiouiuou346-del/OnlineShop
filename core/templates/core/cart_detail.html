@@ -1,3 +1,108 @@
-<a href="{% url 'core:checkout' %}" class="btn btn-success w-100 btn-lg" onclick="return confirm('确定要下单支付吗？')">
-    去结算 (¥{{ total_price }})
-</a>
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <h2 class="fw-bold">我的购物车</h2>
+    </div>
+
+    {% if cart_items %}
+    <!-- 左侧：商品列表 -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">商品清单 ({{ cart_items.count }}件)</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" class="ps-4">商品信息</th>
+                            <th scope="col">单价</th>
+                            <th scope="col">数量</th>
+                            <th scope="col">小计</th>
+                            <th scope="col">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cart_items %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <!-- 商品图片 -->
+                                    <a href="{% url 'core:product_detail' item.product.id %}">
+                                        {% if item.product.images.first %}
+                                            <img src="{{ item.product.images.first.image.url }}" class="rounded border" style="width: 60px; height: 60px; object-fit: cover;" alt="{{ item.product.name }}">
+                                        {% else %}
+                                            <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 12px;">无图</div>
+                                        {% endif %}
+                                    </a>
+                                    <!-- 商品名称 -->
+                                    <div class="ms-3">
+                                        <a href="{% url 'core:product_detail' item.product.id %}" class="text-decoration-none text-dark fw-bold">
+                                            {{ item.product.name }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>¥{{ item.product.price }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ item.quantity }}</span>
+                            </td>
+                            <td class="text-danger fw-bold">¥{{ item.subtotal }}</td>
+                            <td>
+                                <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('确定要移除吗？')">
+                                    删除
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：结算面板 -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">结算摘要</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="text-muted">商品总额</span>
+                    <span class="fw-bold">¥{{ total_price }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between mb-4 align-items-center">
+                    <span class="fs-5">应付总额:</span>
+                    <span class="text-danger fs-3 fw-bold">¥{{ total_price }}</span>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'core:checkout' %}" class="btn btn-success btn-lg shadow-sm" onclick="return confirm('确定要下单支付吗？')">
+                        立即结算
+                    </a>
+                    <a href="{% url 'core:product_list' %}" class="btn btn-outline-secondary">
+                        继续购物
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- 购物车为空时的漂亮提示 -->
+    <div class="col-12 text-center py-5">
+        <div class="mb-4">
+            <!-- 使用 Bootstrap 图标或简单的文字 -->
+            <span style="font-size: 4rem;">🛒</span>
+        </div>
+        <h3 class="text-muted">购物车空空如也</h3>
+        <p class="text-muted mb-4">去挑几件喜欢的商品吧！</p>
+        <a href="{% url 'core:product_list' %}" class="btn btn-primary btn-lg px-5">去逛逛</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

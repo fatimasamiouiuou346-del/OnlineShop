@@ -9,8 +9,8 @@ class ProductImageInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'price', 'stock_quantity', 'is_active')
-    search_fields = ('name',)
+    list_display = ('id', 'name', 'price', 'stock_quantity', 'is_active')
+    search_fields = ('name', 'id') # A15: 允许按名称和 ID 搜索
     # 在编辑商品时，直接可以在下面添加多张图片
     inlines = [ProductImageInline]
 

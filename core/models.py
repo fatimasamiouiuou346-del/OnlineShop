@@ -80,7 +80,7 @@ class ProductAttribute(models.Model):
     attribute_value = models.CharField("属性值", max_length=100)
 
 # ==========================================
-# 3. 购物车 (Block A7-A10) -- 这里是你之前缺少的！
+# 3. 购物车 (Block A7-A10)
 # ==========================================
 class Cart(models.Model):
     """购物车主表"""
@@ -118,6 +118,19 @@ class Order(models.Model):
     shipping_address_snapshot = models.TextField("收货地址快照")
     status = models.CharField("订单状态", max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField("下单时间", auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        # 检查是否是更新（有 PK）
+        if self.pk:
+            old_order = Order.objects.get(pk=self.pk)
+            if old_order.status != self.status:
+                # 状态变了，创建历史记录
+                OrderStatusHistory.objects.create(
+                    order=self,
+                    status=self.status,
+                    comments=f"Status changed from {old_order.status} to {self.status}"
+                )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Order #{self.id} - {self.user.username}"
