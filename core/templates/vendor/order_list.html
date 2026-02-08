@@ -1,0 +1,57 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="list-group">
+            <a href="#" class="list-group-item list-group-item-action active bg-dark border-dark">Vendor Menu</a>
+            <a href="{% url 'core:vendor_product_list' %}" class="list-group-item list-group-item-action">Manage Products</a>
+            <a href="{% url 'core:vendor_order_list' %}" class="list-group-item list-group-item-action fw-bold">Manage Orders</a>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <h3>Customer Orders</h3>
+        
+        <!-- Filter -->
+        <div class="mb-3">
+            <a href="{% url 'core:vendor_order_list' %}" class="btn btn-sm btn-outline-dark">All</a>
+            {% for code, label in status_choices %}
+            <a href="?status={{ code }}" class="btn btn-sm btn-outline-secondary">{{ label }}</a>
+            {% endfor %}
+        </div>
+
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>PO #</th> <!-- A19: P.O. Number -->
+                    <th>Date</th>   <!-- A19: Date -->
+                    <th>Customer</th> <!-- A19: Customer Name -->
+                    <th>Total</th>  <!-- A19: Total Amount -->
+                    <th>Status</th> <!-- A19: Status -->
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.id }}</td>
+                    <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {{ order.user.full_name }}<br>
+                        <small class="text-muted">{{ order.user.email }}</small>
+                    </td>
+                    <td class="fw-bold">¥{{ order.total_amount }}</td>
+                    <td>
+                        <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                    </td>
+                    <td>
+                        <a href="{% url 'core:vendor_order_detail' order.id %}" class="btn btn-sm btn-info text-white">Manage</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

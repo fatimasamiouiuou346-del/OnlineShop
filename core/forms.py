@@ -1,19 +1,23 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
+from django.forms import inlineformset_factory
+from .models import Product, Order, ProductImage
 
-# 获取当前项目实际使用的用户模型（即 core.User）
 User = get_user_model()
 
+# ==========================================
+# 1. 用户注册表单 (Block A1)
+# ==========================================
 class CustomUserCreationForm(UserCreationForm):
-    # 添加这些字段让用户在注册时填写
+    # English Labels
     email = forms.EmailField(required=True, label="Email Address")
     full_name = forms.CharField(required=True, label="Full Name")
     address = forms.CharField(required=True, label="Shipping Address", widget=forms.Textarea(attrs={'rows': 3}))
     city = forms.CharField(required=True, label="City")
+    
     class Meta:
         model = User
-        # 指定表单中显示的字段
         fields = ("username", "email", "full_name")
 
     def save(self, commit=True):
@@ -28,7 +32,66 @@ class CustomUserCreationForm(UserCreationForm):
                 recipient_name=user.full_name,
                 address_line1=self.cleaned_data["address"],
                 city=self.cleaned_data["city"],
-                zip_code="000000", # 简化处理，或让用户填
-                country="Macau"
+                zip_code="000000", 
+                country="Macau" 
             )
         return user
+
+# ==========================================
+# 2. 商家管理表单 (Vendor Portal)
+# ==========================================
+
+class ProductForm(forms.ModelForm):
+    """
+    用于 A16/A17: 添加和编辑商品
+    """
+    class Meta:
+        model = Product
+        # === 修改: 这里的列表中增加了 'video' ===
+        fields = ['category', 'name', 'brand', 'material', 'video', 'description_html', 'price', 'stock_quantity', 'is_active']
+        widgets = {
+            'description_html': forms.Textarea(attrs={'rows': 4}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            # 也可以给 video 加个样式，不过默认的文件上传样式也够用了
+            'video': forms.FileInput(attrs={'class': 'form-control', 'accept': 'video/*'})
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.update({'class': 'form-control'})
+
+class OrderStatusForm(forms.ModelForm):
+    """
+    用于 A20: 修改订单状态
+    """
+    class Meta:
+        model = Order
+        fields = ['status']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-select'})
+        }
+
+# ==========================================
+# 3. 多图管理表单集 (Block B1)
+# ==========================================
+
+class ProductImageForm(forms.ModelForm):
+    class Meta:
+        model = ProductImage
+        fields = ['image', 'is_primary']
+        widgets = {
+            'image': forms.FileInput(attrs={'class': 'form-control'}),
+            'is_primary': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+# 创建 Formset
+ProductImageFormSet = inlineformset_factory(
+    Product, 
+    ProductImage, 
+    form=ProductImageForm,
+    fields=['image', 'is_primary'],
+    extra=3, 
+    can_delete=True
+)

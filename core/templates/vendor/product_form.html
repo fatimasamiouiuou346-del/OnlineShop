@@ -1,0 +1,103 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10"> <!-- 加宽一点，方便放图片 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>{{ title }}</h3>
+            <a href="{% url 'core:vendor_product_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- 1. 商品基本信息 -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light fw-bold">Basic Information</div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        {% for field in form %}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="form-text text-muted small">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                            <div class="text-danger small">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 图片管理 (Block B1) -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light fw-bold d-flex justify-content-between">
+                    <span>Product Images (Block B1)</span>
+                    <small class="text-muted">Upload up to 3 new images at once</small>
+                </div>
+                <div class="card-body p-4">
+                    <!-- 必须包含这一行，用于管理 formset 的状态 -->
+                    {{ formset.management_form }}
+                    
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%">Preview</th>
+                                    <th style="width: 50%">Upload New Image / Change</th>
+                                    <th style="width: 20%">Is Primary?</th>
+                                    <th style="width: 15%">Delete?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form in formset %}
+                                    <!-- 隐藏字段 (如 id) 必须渲染，否则报错 -->
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                    <tr>
+                                        <td>
+                                            {% if form.instance.pk and form.instance.image %}
+                                                <img src="{{ form.instance.image.url }}" class="img-thumbnail" style="height: 60px; width: 60px; object-fit: cover;">
+                                            {% else %}
+                                                <span class="badge bg-secondary">New</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ form.image }}
+                                            {% if form.image.errors %}
+                                                <div class="text-danger small">{{ form.image.errors.0 }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="form-check">
+                                                {{ form.is_primary }}
+                                                <label class="form-check-label">Main Image</label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if form.instance.pk %}
+                                                <div class="form-check text-danger">
+                                                    {{ form.DELETE }}
+                                                    <label class="form-check-label">Delete</label>
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid mb-5">
+                <button type="submit" class="btn btn-primary btn-lg shadow">Save Product & Images</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -9,11 +9,20 @@ class ProductImageInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'stock_quantity', 'is_active')
-    search_fields = ('name', 'id') # A15: 允许按名称和 ID 搜索
-    # 在编辑商品时，直接可以在下面添加多张图片
+    # A6: 在列表中显示 Brand
+    list_display = ('id', 'name', 'brand', 'price', 'stock_quantity', 'is_active')
+    search_fields = ('name', 'id', 'brand') 
+    list_filter = ('category', 'brand', 'is_active')
     inlines = [ProductImageInline]
-
+    # A6: 编辑页面包含新字段
+    fieldsets = (
+        (None, {
+            'fields': ('category', 'name', 'description_html', 'price', 'stock_quantity', 'is_active')
+        }),
+        ('Advanced Attributes (Block A6)', {
+            'fields': ('brand', 'material'),
+        }),
+    )
 class OrderStatusInline(admin.TabularInline):
     model = OrderStatusHistory
     extra = 0

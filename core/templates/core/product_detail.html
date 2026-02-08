@@ -2,8 +2,9 @@
 
 {% block content %}
 <div class="row">
-    <!-- Left: Product Images (Block B1) -->
+    <!-- Left: Product Images & Video (Block B1) -->
     <div class="col-md-6">
+        <!-- 1. 图片轮播 -->
         {% if product.images.all %}
             <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner">
@@ -28,18 +29,40 @@
                      class="img-thumbnail me-2" 
                      style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;" 
                      data-bs-target="#productCarousel" 
-                     data-bs-slide-to="{{ forloop.counter0 }}"
-                     aria-label="Slide {{ forloop.counter }}">
+                     data-bs-slide-to="{{ forloop.counter0 }}">
                 {% endfor %}
             </div>
         {% else %}
             <div class="alert alert-secondary text-center py-5">No Image Available</div>
+        {% endif %}
+
+        <!-- 2. === 新增: 视频播放器 (Optional) === -->
+        {% if product.video %}
+        <div class="mt-4">
+            <h5 class="border-bottom pb-2 text-muted"><i class="bi bi-play-btn"></i> Product Video</h5>
+            <div class="ratio ratio-16x9">
+                <video controls class="rounded shadow-sm">
+                    <source src="{{ product.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
         {% endif %}
     </div>
 
     <!-- Right: Product Info & Purchase (Block A6 & A7) -->
     <div class="col-md-6">
         <h1 class="mb-3 fw-bold">{{ product.name }}</h1>
+        
+        <div class="mb-3">
+            {% if product.brand %}
+            <span class="badge bg-info text-dark me-2">Brand: {{ product.brand }}</span>
+            {% endif %}
+            {% if product.material %}
+            <span class="badge bg-secondary">Material: {{ product.material }}</span>
+            {% endif %}
+        </div>
+
         <h3 class="text-danger mb-4">¥{{ product.price }}</h3>
         
         <div class="card mb-4 shadow-sm border-0 bg-light">

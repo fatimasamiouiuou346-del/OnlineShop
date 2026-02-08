@@ -7,37 +7,31 @@
     </div>
 
     {% if cart_items %}
-    <!-- Cart Items List -->
     <div class="col-md-8">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0">Items ({{ cart_items.count }})</h5>
-            </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th scope="col" class="ps-4">Product</th>
                             <th scope="col">Price</th>
-                            <th scope="col">Quantity</th>
+                            <th scope="col">Quantity (Block A9)</th>
                             <th scope="col">Subtotal</th>
                             <th scope="col">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in cart_items %}
-                        <tr>
+                        <tr id="row-{{ item.id }}">
                             <td class="ps-4">
                                 <div class="d-flex align-items-center">
-                                    <!-- Product Image -->
                                     <a href="{% url 'core:product_detail' item.product.id %}">
                                         {% if item.product.images.first %}
-                                            <img src="{{ item.product.images.first.image.url }}" class="rounded border" style="width: 60px; height: 60px; object-fit: cover;" alt="{{ item.product.name }}">
+                                            <img src="{{ item.product.images.first.image.url }}" class="rounded border" style="width: 60px; height: 60px; object-fit: cover;">
                                         {% else %}
-                                            <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 12px;">No Image</div>
+                                            <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">No Img</div>
                                         {% endif %}
                                     </a>
-                                    <!-- Product Name -->
                                     <div class="ms-3">
                                         <a href="{% url 'core:product_detail' item.product.id %}" class="text-decoration-none text-dark fw-bold">
                                             {{ item.product.name }}
@@ -47,13 +41,16 @@
                             </td>
                             <td>¥{{ item.product.price }}</td>
                             <td>
-                                <span class="badge bg-light text-dark border">{{ item.quantity }}</span>
+                                <!-- A9: AJAX Quantity Control -->
+                                <div class="input-group input-group-sm" style="width: 120px;">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity({{ item.id }}, -1)">-</button>
+                                    <input type="text" class="form-control text-center" id="qty-{{ item.id }}" value="{{ item.quantity }}" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity({{ item.id }}, 1)">+</button>
+                                </div>
                             </td>
-                            <td class="text-danger fw-bold">¥{{ item.subtotal }}</td>
+                            <td class="text-danger fw-bold">¥<span id="subtotal-{{ item.id }}">{{ item.subtotal }}</span></td>
                             <td>
-                                <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to remove this item?')">
-                                    Remove
-                                </a>
+                                <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm">Remove</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -63,45 +60,62 @@
         </div>
     </div>
 
-    <!-- Checkout Panel -->
     <div class="col-md-4">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0">Order Summary</h5>
+                <h5 class="mb-0">Summary</h5>
             </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between mb-3">
-                    <span class="text-muted">Subtotal</span>
-                    <span class="fw-bold">¥{{ total_price }}</span>
-                </div>
-                <hr>
                 <div class="d-flex justify-content-between mb-4 align-items-center">
                     <span class="fs-5">Total:</span>
-                    <span class="text-danger fs-3 fw-bold">¥{{ total_price }}</span>
+                    <span class="text-danger fs-3 fw-bold">¥<span id="cart-total">{{ total_price }}</span></span>
                 </div>
-                
                 <div class="d-grid gap-2">
-                    <a href="{% url 'core:checkout' %}" class="btn btn-success btn-lg shadow-sm" onclick="return confirm('Confirm to checkout?')">
-                        Checkout Now
-                    </a>
-                    <a href="{% url 'core:product_list' %}" class="btn btn-outline-secondary">
-                        Continue Shopping
-                    </a>
+                    <a href="{% url 'core:checkout' %}" class="btn btn-success btn-lg shadow-sm">Checkout Now</a>
                 </div>
             </div>
         </div>
     </div>
 
     {% else %}
-    <!-- Empty Cart Message -->
     <div class="col-12 text-center py-5">
-        <div class="mb-4">
-            <span style="font-size: 4rem;">🛒</span>
-        </div>
         <h3 class="text-muted">Your cart is empty</h3>
-        <p class="text-muted mb-4">Looks like you haven't added any items to the cart yet.</p>
-        <a href="{% url 'core:product_list' %}" class="btn btn-primary btn-lg px-5">Start Shopping</a>
+        <a href="{% url 'core:product_list' %}" class="btn btn-primary mt-3">Start Shopping</a>
     </div>
     {% endif %}
 </div>
+
+<!-- A9: JavaScript for AJAX -->
+<script>
+function updateQuantity(itemId, change) {
+    const qtyInput = document.getElementById(`qty-${itemId}`);
+    let currentQty = parseInt(qtyInput.value);
+    let newQty = currentQty + change;
+
+    if (newQty < 1) return; // 不允许减到0，建议使用 Remove 按钮
+
+    fetch(`/cart/update/${itemId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ 'quantity': newQty })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update UI
+            qtyInput.value = newQty;
+            document.getElementById(`subtotal-${itemId}`).innerText = data.subtotal.toFixed(2);
+            document.getElementById(`cart-total`).innerText = data.total_price.toFixed(2);
+            // Update nav badge if exists
+            // document.querySelector('.badge-warning').innerText = data.cart_count;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
 {% endblock %}

@@ -1,25 +1,84 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<h2 class="mb-4">My Order History</h2>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold">My Orders</h2>
+        <span class="text-muted">Total: {{ orders.count }} orders</span>
+    </div>
 
-<div class="list-group">
-    {% for order in orders %}
-    <a href="{% url 'core:order_detail' order.id %}" class="list-group-item list-group-item-action" aria-current="true">
-        <div class="d-flex w-100 justify-content-between">
-            <h5 class="mb-1">Order #{{ order.id }}</h5>
-            <small class="text-muted">{{ order.created_at|date:"Y-m-d H:i" }}</small>
+    <!-- Order Status Filter -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-2">
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link {% if not current_status %}active{% endif %}" href="{% url 'core:order_list' %}">All</a>
+                </li>
+                {% for status_code, status_label in status_choices %}
+                <li class="nav-item">
+                    <a class="nav-link {% if current_status == status_code %}active{% endif %}" 
+                       href="?status={{ status_code }}">
+                        {{ status_label }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
-        <div class="d-flex justify-content-between align-items-center mt-2">
-            <div>
-                <span class="badge bg-primary rounded-pill">{{ order.get_status_display }}</span>
-                <span class="ms-2 text-muted">{{ order.items.count }} items</span>
+    </div>
+
+    <!-- Order List -->
+    <div class="list-group shadow-sm">
+        {% for order in orders %}
+        <a href="{% url 'core:order_detail' order.id %}" class="list-group-item list-group-item-action p-4 mb-3 border rounded shadow-sm hover-effect" aria-current="true">
+            <div class="d-flex w-100 justify-content-between align-items-center">
+                <div>
+                    <!-- P.O. Number & Date -->
+                    <h5 class="mb-1 fw-bold text-primary">Order #{{ order.id }}</h5>
+                    <small class="text-muted">
+                        <i class="bi bi-calendar"></i> {{ order.created_at|date:"Y-m-d H:i" }}
+                    </small>
+                </div>
+                <div class="text-end">
+                    <!-- Status -->
+                    <span class="badge rounded-pill 
+                        {% if order.status == 'Pending' %}bg-warning text-dark
+                        {% elif order.status == 'Shipped' %}bg-success
+                        {% elif order.status == 'Cancelled' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        {{ order.get_status_display }}
+                    </span>
+                </div>
             </div>
-            <strong class="text-danger fs-5">¥{{ order.total_amount }}</strong>
+            
+            <hr class="my-3">
+            
+            <div class="d-flex justify-content-between align-items-end">
+                <div>
+                    <p class="mb-1 text-muted small">Items: {{ order.items.count }}</p>
+                    <p class="mb-0 text-muted small">Shipped to: {{ order.shipping_address_snapshot|truncatechars:30 }}</p>
+                </div>
+                <!-- Total Amount -->
+                <h4 class="mb-0 text-danger fw-bold">¥{{ order.total_amount }}</h4>
+            </div>
+        </a>
+        {% empty %}
+        <div class="text-center py-5">
+            <div class="text-muted mb-3" style="font-size: 3rem;">📦</div>
+            <h4>No orders found</h4>
+            <p class="text-muted">Try changing the filter or go shopping!</p>
+            <a href="{% url 'core:product_list' %}" class="btn btn-outline-primary mt-2">Start Shopping</a>
         </div>
-    </a>
-    {% empty %}
-    <div class="alert alert-warning">You have no orders yet.</div>
-    {% endfor %}
+        {% endfor %}
+    </div>
 </div>
+
+<style>
+    .list-group-item {
+        transition: transform 0.2s;
+    }
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+        transform: translateY(-2px);
+    }
+</style>
 {% endblock %}

@@ -129,3 +129,25 @@ AUTH_USER_MODEL = 'core.User'
 import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# 指定自定义用户模型
+AUTH_USER_MODEL = 'core.User'
+
+# 配置媒体文件（图片）存储路径
+import os
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ==========================================
+# 新增配置：修复登录后 404 问题
+# ==========================================
+
+# 1. 登录成功后，如果没有指定 next 参数，默认跳转到商品列表页
+LOGIN_REDIRECT_URL = 'core:product_list'
+
+# 2. 注销后，跳转到商品列表页
+LOGOUT_REDIRECT_URL = 'core:product_list'
+
+# 3. 如果未登录用户访问受保护页面，跳转到这个登录页
+LOGIN_URL = 'core:login'

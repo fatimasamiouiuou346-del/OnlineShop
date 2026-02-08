@@ -1,55 +1,128 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-<div class="card shadow">
-    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-        <span>Order #{{ order.id }}</span>
-        <span class="badge bg-warning text-dark">{{ order.get_status_display }}</span>
+<div class="container py-4">
+    <div class="mb-4">
+        <a href="{% url 'core:order_list' %}" class="text-decoration-none text-secondary">
+            &larr; Back to My Orders
+        </a>
     </div>
-    <div class="card-body">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <h5 class="text-muted">Shipping Address</h5>
-                <p>{{ order.shipping_address_snapshot }}</p>
+
+    <!-- 订单头部状态栏 -->
+    <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-dark text-white p-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="mb-0">Order #{{ order.id }}</h3>
+                <small class="text-white-50">Placed on {{ order.created_at|date:"F j, Y, H:i" }}</small>
             </div>
-            <div class="col-md-6 text-end">
-                <h5 class="text-muted">Order Date</h5>
-                <p>{{ order.created_at|date:"Y-m-d H:i:s" }}</p>
+            <div>
+                <span class="badge fs-6 px-3 py-2 
+                    {% if order.status == 'Pending' %}bg-warning text-dark
+                    {% elif order.status == 'Shipped' %}bg-success
+                    {% elif order.status == 'Cancelled' %}bg-danger
+                    {% else %}bg-secondary{% endif %}">
+                    {{ order.get_status_display }}
+                </span>
             </div>
         </div>
+        
+        <div class="card-body p-4">
+            <!-- 状态操作区 (Block B2) -->
+            {% if order.can_cancel %}
+            <div class="alert alert-light border d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <i class="bi bi-info-circle text-primary"></i> 
+                    This order is currently <strong>{{ order.get_status_display }}</strong>. You can cancel it before it ships.
+                </div>
+                <form action="{% url 'core:cancel_order' order.id %}" method="post" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger">Cancel Order</button>
+                </form>
+            </div>
+            {% endif %}
 
-        <h5 class="mb-3">Order Items</h5>
-        <table class="table table-bordered">
-            <thead class="table-light">
-                <tr>
-                    <th>Product Name</th>
-                    <th>Unit Price</th>
-                    <th>Qty</th>
-                    <th>Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in order.items.all %}
-                <tr>
-                    <td>{{ item.product_name_snapshot }}</td>
-                    <td>¥{{ item.unit_price_snapshot }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>¥{{ item.unit_price_snapshot|default:0 }} * {{ item.quantity }}</td>
-                </tr>
+            <div class="row">
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <h5 class="text-muted mb-3">Shipping Address</h5>
+                    <div class="p-3 bg-light rounded h-100">
+                        <p class="mb-0 fw-bold">{{ request.user.full_name }}</p>
+                        <p class="mb-0 text-break">{{ order.shipping_address_snapshot }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="text-muted mb-3">Summary</h5>
+                    <p class="mb-1">Items Total: <span class="fw-bold">{{ order.items.count }}</span></p>
+                    <h3 class="text-danger fw-bold">¥{{ order.total_amount }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商品清单 -->
+    <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-white border-bottom p-3">
+            <h5 class="mb-0 fw-bold">Order Items</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Product</th>
+                        <th class="text-center">Price</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-end pe-4">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-bold">{{ item.product_name_snapshot }}</div>
+                            {% if item.product %}
+                            <small><a href="{% url 'core:product_detail' item.product.id %}" class="text-decoration-none text-muted">View Product</a></small>
+                            {% else %}
+                            <small class="text-muted">Product no longer available</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">¥{{ item.unit_price_snapshot }}</td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                        <td class="text-end pe-4 fw-bold">¥{{ item.subtotal }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 状态历史 (Block B4) -->
+    {% if order.status_history.exists %}
+    <div class="card shadow border-0">
+        <div class="card-header bg-white border-bottom p-3">
+            <h5 class="mb-0 fw-bold">Order Tracking History</h5>
+        </div>
+        <div class="card-body">
+            <div class="timeline">
+                {% for history in order.status_history.all %}
+                <div class="d-flex mb-3 border-bottom pb-2">
+                    <div class="me-3 text-muted" style="width: 140px;">
+                        {{ history.changed_at|date:"Y-m-d H:i" }}
+                    </div>
+                    <div>
+                        <span class="fw-bold 
+                            {% if history.status == 'Shipped' %}text-success
+                            {% elif history.status == 'Cancelled' %}text-danger
+                            {% else %}text-dark{% endif %}">
+                            {{ history.get_status_display }}
+                        </span>
+                        {% if history.comments %}
+                        <div class="text-muted small fst-italic">{{ history.comments }}</div>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" class="text-end fw-bold">Grand Total:</td>
-                    <td class="text-danger fw-bold fs-4">¥{{ order.total_amount }}</td>
-                </tr>
-            </tfoot>
-        </table>
-
-        <div class="text-center mt-4">
-            <a href="{% url 'core:order_list' %}" class="btn btn-outline-secondary">Back to Orders</a>
-            <a href="{% url 'core:product_list' %}" class="btn btn-primary">Continue Shopping</a>
+            </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
