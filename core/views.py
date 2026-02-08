@@ -33,8 +33,7 @@ def product_list(request):
             Q(name__icontains=query) | 
             Q(description_html__icontains=query) |
             Q(brand__icontains=query) |
-            Q(material__icontains=query) |
-            Q(origin__icontains=query)
+            Q(material__icontains=query) 
         )
     
     if category_id:
