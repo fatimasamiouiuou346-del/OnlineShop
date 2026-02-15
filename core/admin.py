@@ -20,7 +20,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('category', 'name', 'description_html', 'price', 'stock_quantity', 'is_active')
         }),
         ('Advanced Attributes (Block A6)', {
-            'fields': ('brand', 'material'),
+            'fields': ('brand', 'material', 'origin'),
         }),
     )
 class OrderStatusInline(admin.TabularInline):

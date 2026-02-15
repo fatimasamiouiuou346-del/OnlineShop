@@ -16,6 +16,17 @@
                 {{ cat.name }}
             </a>
             {% endfor %}
+            </div>
+        <div class="price-range"> 
+            <label>Price Range:</label> 
+            <div> 
+                <input type="number" id="minInput" min="0" max="10000" step="10" value="200" oninput="syncInputs()"> 
+                <input type="number" id="maxInput" min="0" max="10000" step="10" value="800" oninput="syncInputs()"> 
+            </div> 
+            <p> 
+                Min: <span id="minValue">200</span> — 
+                Max: <span id="maxValue">800</span> 
+            </p> 
         </div>
     </div>
 
@@ -87,3 +98,15 @@
     </div>
 </div>
 {% endblock %}
+
+<script>
+    function syncInputs() {
+        let min = parseInt(document.getElementById("minInput").value);
+        let max = parseInt(document.getElementById("maxInput").value);
+
+        if (min > max) min = max;
+
+        document.getElementById("minValue").textContent = min;
+        document.getElementById("maxValue").textContent = max;
+    }
+</script>

@@ -48,7 +48,7 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         # === 修改: 这里的列表中增加了 'video' ===
-        fields = ['category', 'name', 'brand', 'material', 'video', 'description_html', 'price', 'stock_quantity', 'is_active']
+        fields = ['category', 'name', 'brand', 'material', 'origin' ,'video', 'description_html', 'price', 'stock_quantity', 'is_active']
         widgets = {
             'description_html': forms.Textarea(attrs={'rows': 4}),
             'category': forms.Select(attrs={'class': 'form-select'}),

@@ -46,6 +46,7 @@ class Product(models.Model):
     # Block A6 Attributes
     brand = models.CharField("Brand", max_length=100, blank=True, null=True)
     material = models.CharField("Material", max_length=100, blank=True, null=True)
+    origin = models.CharField("Origin", max_length=100, blank=True, null=True)
     
     # === 新增: Block B1 Optional Video ===
     video = models.FileField("Product Video", upload_to='product_videos/', blank=True, null=True, help_text="Optional short video (MP4, WebM)")
