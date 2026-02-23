@@ -20,13 +20,14 @@
         <div class="price-range"> 
             <label>Price Range:</label> 
             <div> 
-                <input type="number" id="minInput" min="0" max="10000" step="10" value="200" oninput="syncInputs()"> 
-                <input type="number" id="maxInput" min="0" max="10000" step="10" value="800" oninput="syncInputs()"> 
-            </div> 
+                Min:<input type="number" id="minInput" min="0" max="10000" step="10" value="0"> 
+                Max:<input type="number" id="maxInput" min="0" max="10000" step="10" value="1000">
+            </div>
             <p> 
-                Min: <span id="minValue">200</span> — 
-                Max: <span id="maxValue">800</span> 
+                Min: <span id="minValue">0</span> — 
+                Max: <span id="maxValue">1000</span> 
             </p> 
+            <button id="filterButton" class="btn btn-success mt-2">Filter</button>
         </div>
     </div>
 
@@ -97,16 +98,39 @@
         
     </div>
 </div>
-{% endblock %}
 
 <script>
-    function syncInputs() {
-        let min = parseInt(document.getElementById("minInput").value);
-        let max = parseInt(document.getElementById("maxInput").value);
+    const minInput = document.getElementById("minInput"); 
+    const maxInput = document.getElementById("maxInput"); 
+    const minValue = document.getElementById("minValue"); 
+    const maxValue = document.getElementById("maxValue"); 
+    const filterButton = document.getElementById("filterButton");
+    
+    function updateOutput() { 
+        let min = parseInt(minInput.value, 10);
+        let max = parseInt(maxInput.value, 10);
 
-        if (min > max) min = max;
+        // Lock min so it cannot increase beyond max
+        minInput.max = max;
 
-        document.getElementById("minValue").textContent = min;
-        document.getElementById("maxValue").textContent = max;
-    }
-</script>
+        // Also ensure max cannot go below min
+        maxInput.min = min;
+
+        minValue.textContent = min; 
+        maxValue.textContent = max; 
+    } 
+    
+    minInput.addEventListener("input", updateOutput); 
+    maxInput.addEventListener("input", updateOutput); 
+
+    filterButton.addEventListener("click", function() {
+        const min = minInput.value;
+        const max = maxInput.value;
+
+
+    });
+ 
+    updateOutput(); 
+
+</script> 
+{% endblock %}
