@@ -100,4 +100,23 @@
         </form>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const primaryCheckboxes = document.querySelectorAll('.is-primary-checkbox');
+    
+    primaryCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // 如果我勾选了这一个
+            if (this.checked) {
+                // 就把其他的全部取消勾选
+                primaryCheckboxes.forEach(other => {
+                    if (other !== this) {
+                        other.checked = false;
+                    }
+                });
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

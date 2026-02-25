@@ -7,29 +7,33 @@
     </div>
 
     {% if cart_items %}
+    <!-- Cart Items List -->
     <div class="col-md-8">
         <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">Items in Cart</h5>
+            </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th scope="col" class="ps-4">Product</th>
                             <th scope="col">Price</th>
-                            <th scope="col">Quantity (Block A9)</th>
+                            <th scope="col" class="text-center">Quantity</th>
                             <th scope="col">Subtotal</th>
                             <th scope="col">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in cart_items %}
-                        <tr id="row-{{ item.id }}">
+                        <tr id="cart-row-{{ item.id }}">
                             <td class="ps-4">
                                 <div class="d-flex align-items-center">
                                     <a href="{% url 'core:product_detail' item.product.id %}">
                                         {% if item.product.images.first %}
-                                            <img src="{{ item.product.images.first.image.url }}" class="rounded border" style="width: 60px; height: 60px; object-fit: cover;">
+                                            <img src="{{ item.product.images.first.image.url }}" class="rounded border" style="width: 60px; height: 60px; object-fit: cover;" alt="{{ item.product.name }}">
                                         {% else %}
-                                            <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">No Img</div>
+                                            <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 12px;">No Image</div>
                                         {% endif %}
                                     </a>
                                     <div class="ms-3">
@@ -40,17 +44,23 @@
                                 </div>
                             </td>
                             <td>¥{{ item.product.price }}</td>
-                            <td>
-                                <!-- A9: AJAX Quantity Control -->
-                                <div class="input-group input-group-sm" style="width: 120px;">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity({{ item.id }}, -1)">-</button>
-                                    <input type="text" class="form-control text-center" id="qty-{{ item.id }}" value="{{ item.quantity }}" readonly>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity({{ item.id }}, 1)">+</button>
+                            
+                            <!-- === A9: 修改数量的控制按钮 === -->
+                            <td class="text-center">
+                                <div class="input-group input-group-sm mx-auto" style="width: 110px;">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity('{{ item.id }}', -1)">-</button>
+                                    <input type="text" class="form-control text-center bg-white" id="qty-{{ item.id }}" value="{{ item.quantity }}" readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity('{{ item.id }}', 1)">+</button>
                                 </div>
                             </td>
+                            
+                            <!-- 注意这里的 id，JS 需要靠它来更新数字 -->
                             <td class="text-danger fw-bold">¥<span id="subtotal-{{ item.id }}">{{ item.subtotal }}</span></td>
+                            
                             <td>
-                                <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm">Remove</a>
+                                <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this item?')">
+                                    Remove
+                                </a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -60,62 +70,79 @@
         </div>
     </div>
 
+    <!-- Checkout Panel -->
     <div class="col-md-4">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0">Summary</h5>
+                <h5 class="mb-0">Order Summary</h5>
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-4 align-items-center">
                     <span class="fs-5">Total:</span>
+                    <!-- 注意这里的 id="cart-total" -->
                     <span class="text-danger fs-3 fw-bold">¥<span id="cart-total">{{ total_price }}</span></span>
                 </div>
+                
                 <div class="d-grid gap-2">
-                    <a href="{% url 'core:checkout' %}" class="btn btn-success btn-lg shadow-sm">Checkout Now</a>
+                    <a href="{% url 'core:checkout' %}" class="btn btn-success btn-lg shadow-sm">
+                        Checkout Now
+                    </a>
+                    <a href="{% url 'core:product_list' %}" class="btn btn-outline-secondary">
+                        Continue Shopping
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 
     {% else %}
+    <!-- Empty Cart -->
     <div class="col-12 text-center py-5">
+        <div class="mb-4"><span style="font-size: 4rem;">🛒</span></div>
         <h3 class="text-muted">Your cart is empty</h3>
-        <a href="{% url 'core:product_list' %}" class="btn btn-primary mt-3">Start Shopping</a>
+        <a href="{% url 'core:product_list' %}" class="btn btn-primary btn-lg mt-3">Start Shopping</a>
     </div>
     {% endif %}
 </div>
 
-<!-- A9: JavaScript for AJAX -->
+<!-- === A9: AJAX JavaScript 逻辑 === -->
 <script>
 function updateQuantity(itemId, change) {
     const qtyInput = document.getElementById(`qty-${itemId}`);
     let currentQty = parseInt(qtyInput.value);
     let newQty = currentQty + change;
 
-    if (newQty < 1) return; // 不允许减到0，建议使用 Remove 按钮
+    // 最小数量限制为 1
+    if (newQty < 1) {
+        return; 
+    }
 
+    // 向后端发送请求
     fetch(`/cart/update/${itemId}/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
+            'X-CSRFToken': '{{ csrf_token }}' // 安全令牌，必须携带
         },
         body: JSON.stringify({ 'quantity': newQty })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update UI
+            // 请求成功：立刻更新页面上的数值，不用刷新网页！
             qtyInput.value = newQty;
-            document.getElementById(`subtotal-${itemId}`).innerText = data.subtotal.toFixed(2);
-            document.getElementById(`cart-total`).innerText = data.total_price.toFixed(2);
-            // Update nav badge if exists
-            // document.querySelector('.badge-warning').innerText = data.cart_count;
+            // 更新小计 (保留两位小数)
+            document.getElementById(`subtotal-${itemId}`).innerText = parseFloat(data.subtotal).toFixed(2);
+            // 更新总计
+            document.getElementById('cart-total').innerText = parseFloat(data.total_price).toFixed(2);
         } else {
-            alert('Error: ' + data.error);
+            // 如果后端返回失败 (比如库存不足)
+            alert(data.error);
         }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => {
+        console.error('Error:', error);
+    });
 }
 </script>
 {% endblock %}

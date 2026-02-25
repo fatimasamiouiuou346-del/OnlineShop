@@ -2,69 +2,58 @@
 
 {% block content %}
 <div class="row">
-    <!-- 左侧分类 (Block C3) -->
+    <!-- Categories Sidebar -->
     <div class="col-md-3">
         <div class="list-group">
-            <!-- 判断当前是否有分类参数，如果没有，"所有分类"高亮 -->
             <a href="{% url 'core:product_list' %}" class="list-group-item list-group-item-action {% if not request.GET.category %}active{% endif %}">
                 All Categories
             </a>
             {% for cat in categories %}
-            <!-- 点击分类时，保留当前的搜索关键词 q -->
             <a href="?category={{ cat.id }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" 
                class="list-group-item list-group-item-action {% if request.GET.category|add:'0' == cat.id %}active{% endif %}">
                 {{ cat.name }}
             </a>
             {% endfor %}
-            </div>
-        <div class="price-range"> 
-            <label>Price Range:</label> 
-            <div> 
-                Min:<input type="number" id="minInput" min="0" max="10000" step="10" value="0"> 
-                Max:<input type="number" id="maxInput" min="0" max="10000" step="10" value="1000">
-            </div>
-            <p> 
-                Min: <span id="minValue">0</span> — 
-                Max: <span id="maxValue">1000</span> 
-            </p> 
-            <button id="filterButton" class="btn btn-success mt-2">Filter</button>
         </div>
     </div>
 
-    <!-- 右侧商品列表 (Block A3) -->
+    <!-- Product Grid -->
     <div class="col-md-9">
         <div class="row">
             {% for product in products %}
             <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-                    <!-- 显示第一张图片 (Block B1) -->
-                    {% if product.images.first %}
-                        <img src="{{ product.images.first.image.url }}" class="card-img-top" style="height: 200px; object-fit: cover;" alt="{{ product.name }}">
+                <div class="card h-100 shadow-sm hover-effect">
+                    <!-- === 修复: 使用 product.primary_image 作为封面 === -->
+                    {% if product.primary_image %}
+                        <img src="{{ product.primary_image.image.url }}" class="card-img-top" style="height: 220px; object-fit: cover;" alt="{{ product.name }}">
                     {% else %}
-                        <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 200px;">No Image</div>
+                        <div class="bg-light text-muted d-flex align-items-center justify-content-center border-bottom" style="height: 220px;">
+                            <i class="bi bi-image" style="font-size: 3rem;"></i>
+                        </div>
                     {% endif %}
                     
                     <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">{{ product.name }}</h5>
-                        <p class="card-text text-danger fw-bold">¥{{ product.price }}</p>
-                        <!-- mt-auto 让按钮始终沉底，保持卡片高度整齐 -->
-                        <a href="{% url 'core:product_detail' product.id %}" class="btn btn-primary w-100 mt-auto">View Details</a>
+                        <h5 class="card-title text-truncate" title="{{ product.name }}">{{ product.name }}</h5>
+                        <p class="card-text text-danger fw-bold fs-5 mb-3">¥{{ product.price }}</p>
+                        
+                        <a href="{% url 'core:product_detail' product.id %}" class="btn btn-outline-primary w-100 mt-auto">
+                            View Details
+                        </a>
                     </div>
                 </div>
             </div>
             {% empty %}
-                <div class="alert alert-warning">No products found.</div>
+                <div class="alert alert-warning w-100 text-center py-5">
+                    <i class="bi bi-search" style="font-size: 2rem;"></i><br>
+                    No products found matching your criteria.
+                </div>
             {% endfor %}
         </div>
 
-        <!-- ========================================== -->
-        <!-- Block A5: 分页控件 (Pagination Controls) -->
-        <!-- ========================================== -->
+        <!-- Pagination -->
         {% if products.has_other_pages %}
         <nav aria-label="Page navigation" class="mt-4">
             <ul class="pagination justify-content-center">
-                
-                <!-- 上一页按钮 -->
                 {% if products.has_previous %}
                 <li class="page-item">
                     <a class="page-link" href="?page={{ products.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Previous</a>
@@ -73,7 +62,6 @@
                 <li class="page-item disabled"><span class="page-link">Previous</span></li>
                 {% endif %}
 
-                <!-- 页码循环 -->
                 {% for i in products.paginator.page_range %}
                     {% if products.number == i %}
                         <li class="page-item active"><span class="page-link">{{ i }}</span></li>
@@ -84,7 +72,6 @@
                     {% endif %}
                 {% endfor %}
 
-                <!-- 下一页按钮 -->
                 {% if products.has_next %}
                 <li class="page-item">
                     <a class="page-link" href="?page={{ products.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">Next</a>
@@ -95,42 +82,11 @@
             </ul>
         </nav>
         {% endif %}
-        
     </div>
 </div>
 
-<script>
-    const minInput = document.getElementById("minInput"); 
-    const maxInput = document.getElementById("maxInput"); 
-    const minValue = document.getElementById("minValue"); 
-    const maxValue = document.getElementById("maxValue"); 
-    const filterButton = document.getElementById("filterButton");
-    
-    function updateOutput() { 
-        let min = parseInt(minInput.value, 10);
-        let max = parseInt(maxInput.value, 10);
-
-        // Lock min so it cannot increase beyond max
-        minInput.max = max;
-
-        // Also ensure max cannot go below min
-        maxInput.min = min;
-
-        minValue.textContent = min; 
-        maxValue.textContent = max; 
-    } 
-    
-    minInput.addEventListener("input", updateOutput); 
-    maxInput.addEventListener("input", updateOutput); 
-
-    filterButton.addEventListener("click", function() {
-        const min = minInput.value;
-        const max = maxInput.value;
-
-
-    });
- 
-    updateOutput(); 
-
-</script> 
+<style>
+    .hover-effect { transition: transform 0.2s, box-shadow 0.2s; }
+    .hover-effect:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+</style>
 {% endblock %}

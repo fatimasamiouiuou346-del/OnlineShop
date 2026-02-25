@@ -42,15 +42,12 @@ class Category(models.Model):
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     name = models.CharField("Product Name", max_length=200)
-    
-    # Block A6 Attributes
     brand = models.CharField("Brand", max_length=100, blank=True, null=True)
     material = models.CharField("Material", max_length=100, blank=True, null=True)
-    origin = models.CharField("Origin", max_length=100, blank=True, null=True)
     
-    # === 新增: Block B1 Optional Video ===
+    # 注意：origin 字段已经被安全移除，以匹配你的 forms.py
+    
     video = models.FileField("Product Video", upload_to='product_videos/', blank=True, null=True, help_text="Optional short video (MP4, WebM)")
-    
     description_html = models.TextField("Description (HTML)", help_text="Supports HTML formatting")
     price = models.DecimalField("Price", max_digits=10, decimal_places=2)
     stock_quantity = models.PositiveIntegerField("Stock", default=0)
@@ -60,10 +57,19 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    # === 核心修复: 强制获取主图的逻辑 ===
+    @property
+    def primary_image(self):
+        """优先获取被标记为主图的图片，如果没有，则返回第一张"""
+        img = self.images.filter(is_primary=True).first()
+        if img:
+            return img
+        return self.images.first()
+
     def admin_photo(self):
-        first_image = self.images.first()
-        if first_image:
-            return mark_safe(f'<img src="{first_image.image.url}" width="50" height="50" style="object-fit:cover; border-radius: 4px;" />')
+        img = self.primary_image
+        if img:
+            return mark_safe(f'<img src="{img.image.url}" width="50" height="50" style="object-fit:cover; border-radius: 4px;" />')
         return "No Image"
     admin_photo.short_description = 'Preview'
 
@@ -71,6 +77,12 @@ class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
     image = models.ImageField("Image File", upload_to='product_images/')
     is_primary = models.BooleanField("Is Primary", default=False)
+
+    class Meta:
+        # === 核心修复 1: 强制排序 ===
+        # -is_primary 表示 True(1) 排在 False(0) 前面
+        # 这样 product.images.first() 永远会获取到主图！
+        ordering = ['-is_primary', 'id']
 
     def __str__(self):
         return f"Image for {self.product.name}"

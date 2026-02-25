@@ -20,7 +20,6 @@
             </a>
         </div>
 
-        <!-- 搜索框 -->
         <form class="d-flex mb-4" method="get">
             <input class="form-control me-2" type="search" name="q" placeholder="Search by Name, Brand or ID..." value="{{ request.GET.q|default:'' }}">
             <button class="btn btn-outline-dark" type="submit">Search</button>
@@ -48,10 +47,10 @@
                         <tr>
                             <td>#{{ p.id }}</td>
                             <td>
-                                {% if p.images.first %}
-                                <img src="{{ p.images.first.image.url }}" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
+                                {% if p.primary_image %}
+                                <img src="{{ p.primary_image.image.url }}" class="rounded shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
                                 {% else %}
-                                <div class="bg-secondary rounded" style="width: 40px; height: 40px;"></div>
+                                <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 10px;">No Img</div>
                                 {% endif %}
                             </td>
                             <td>
@@ -75,6 +74,10 @@
                             </td>
                             <td>
                                 <a href="{% url 'core:vendor_product_edit' p.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                <form action="{% url 'core:vendor_product_delete' p.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this product? This action cannot be undone.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                         {% empty %}
@@ -86,18 +89,15 @@
                 </table>
             </div>
             
-            <!-- 底部信息 -->
             <div class="card-footer bg-white border-top-0 text-muted small">
                 Showing {{ products.start_index }} to {{ products.end_index }} of {{ products.paginator.count }} products
             </div>
         </div>
         
-        <!-- 分页控件 (这里是修复的核心) -->
+        <!-- 分页控件 -->
         {% if products.has_other_pages %}
         <nav class="mt-4">
             <ul class="pagination justify-content-center">
-                
-                <!-- 上一页 -->
                 {% if products.has_previous %}
                 <li class="page-item">
                     <a class="page-link" href="?page={{ products.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Previous</a>
@@ -106,12 +106,10 @@
                 <li class="page-item disabled"><span class="page-link">Previous</span></li>
                 {% endif %}
 
-                <!-- 页码显示 -->
                 <li class="page-item disabled">
                     <span class="page-link text-dark">Page {{ products.number }} of {{ products.paginator.num_pages }}</span>
                 </li>
 
-                <!-- 下一页 -->
                 {% if products.has_next %}
                 <li class="page-item">
                     <a class="page-link" href="?page={{ products.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">Next</a>
