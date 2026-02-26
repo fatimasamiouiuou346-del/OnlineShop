@@ -22,7 +22,10 @@ def product_list(request):
     if query:
         products_list = products_list.filter(
             Q(name__icontains=query) | 
-            Q(description_html__icontains=query)
+            Q(description_html__icontains=query) |
+            Q(brand__icontains=query) |
+            Q(material__icontains=query) |
+            Q(origin__icontains=query) 
         )
     
     if category_id:
@@ -228,7 +231,9 @@ def vendor_product_list(request):
         products_list = products_list.filter(
             Q(name__icontains=query) | 
             Q(id__icontains=query) |
-            Q(brand__icontains=query)
+            Q(brand__icontains=query) |
+            Q(material__icontains=query) |
+            Q(origin__icontains=query) 
         )
     
     paginator = Paginator(products_list, 10) 
