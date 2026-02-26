@@ -48,7 +48,8 @@
         </div>
 
         <div>
-            <button id="filterButton" class="btn btn-secondary mt-2">Filter</button>
+            <button id="filterButton" class="btn btn-secondary mt-2 w-100">Filter</button>
+            <button id="clearButton" class="btn btn-light mt-2 w-100">Clear All Filters</button>
         </div>
 
     </div>
@@ -171,6 +172,13 @@
 
         window.location.href = window.location.pathname + '?' + urlParams.toString();
 
+    });
+
+    clearButton.addEventListener("click", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        // Keep the search query but wipe the filters
+        window.location.href = window.location.pathname + (q ? '?q=' + q : '');
     });
 
 </script> 
