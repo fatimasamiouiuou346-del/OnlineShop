@@ -15,6 +15,18 @@
             </a>
             {% endfor %}
         </div>
+        <div class="price-range"> 
+            <label>Price Range:</label> 
+            <div> 
+                Min:<input type="number" id="minInput" min="0" max="10000" step="10" value="0"> 
+                Max:<input type="number" id="maxInput" min="0" max="10000" step="10" value="1000">
+            </div>
+            <p> 
+                Min: <span id="minValue">0</span> — 
+                Max: <span id="maxValue">1000</span> 
+            </p> 
+            <button id="filterButton" class="btn btn-success mt-2">Filter</button>
+        </div>
     </div>
 
     <!-- Product Grid -->
@@ -89,4 +101,33 @@
     .hover-effect { transition: transform 0.2s, box-shadow 0.2s; }
     .hover-effect:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
 </style>
+
+<script>
+    const minInput = document.getElementById("minInput"); 
+    const maxInput = document.getElementById("maxInput"); 
+    const minValue = document.getElementById("minValue"); 
+    const maxValue = document.getElementById("maxValue"); 
+    const filterButton = document.getElementById("filterButton");
+    
+    function updateOutput() { 
+        let min = parseInt(minInput.value, 10);
+        let max = parseInt(maxInput.value, 10);
+
+        minInput.max = max;
+
+        maxInput.min = min;
+
+        minValue.textContent = min; 
+        maxValue.textContent = max; 
+    } 
+
+    filterButton.addEventListener("click", function() {
+        const min = minInput.value;
+        const max = maxInput.value;
+        updateOutput();
+    });
+ 
+     
+
+</script> 
 {% endblock %}
