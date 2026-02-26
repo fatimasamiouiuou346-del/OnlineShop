@@ -39,11 +39,13 @@
             <h6>Price Range</h6>  
             <div class="mb-2">
                 <label class="form-label small mb-1">Min Price</label>
-                <input type="number" id="minInput" class="form-control" min="0" step="10" value="{{ min_p|default:0 }}"> 
+                <input type="number" id="minInput" class="form-control" min="0" step="10" value="{{ min_p|default:0 }}" onkeydown="return false;" 
+               style="caret-color: transparent;"> 
             </div>
             <div class="mb-3">
                 <label class="form-label small mb-1">Max Price</label>
-                <input type="number" id="maxInput" class="form-control" min="0" step="10" value="{{ max_p|default:1000 }}">
+                <input type="number" id="maxInput" class="form-control" min="0" step="10" value="{{ max_p|default:1000 }}" onkeydown="return false;" 
+               style="caret-color: transparent;">
             </div>
         </div>
 
