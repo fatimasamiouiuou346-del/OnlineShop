@@ -2,8 +2,9 @@
 
 {% block content %}
 <div class="row">
-    <!-- Categories Sidebar -->
     <div class="col-md-3">
+    <!-- Categories Sidebar -->
+    <!--
         <div class="list-group">
             <a href="{% url 'core:product_list' %}" class="list-group-item list-group-item-action {% if not request.GET.category %}active{% endif %}">
                 All Categories
@@ -14,19 +15,42 @@
                 {{ cat.name }}
             </a>
             {% endfor %}
-        </div>
-        <div class="price-range"> 
-            <label>Price Range:</label> 
-            <div> 
-                Min:<input type="number" id="minInput" min="0" max="10000" step="10" value="0"> 
-                Max:<input type="number" id="maxInput" min="0" max="10000" step="10" value="1000">
+        </div></br>
+    -->
+
+    <!-- new -->
+    <h5>Filter Options</h5></br>
+
+        <div class="categories">
+            <h6>Categories</h6>
+            <div>
+                <select name="category" class="form-select">
+                    <option value="All Categories">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
-            <p> 
-                Min: <span id="minValue">0</span> — 
-                Max: <span id="maxValue">1000</span> 
-            </p> 
-            <button id="filterButton" class="btn btn-success mt-2">Filter</button>
+        </div></br>
+
+        <div class="price-range"> 
+            <h6>Price Range</h6>  
+            <div class="mb-2">
+                <label class="form-label small mb-1">Min Price</label>
+                <input type="number" id="minInput" class="form-control" min="0" step="10" value="{{ min_p|default:0 }}"> 
+            </div>
+            <div class="mb-3">
+                <label class="form-label small mb-1">Max Price</label>
+                <input type="number" id="maxInput" class="form-control" min="0" step="10" value="{{ max_p|default:1000 }}">
+            </div>
         </div>
+
+        <div>
+            <button id="filterButton" class="btn btn-secondary mt-2">Filter</button>
+        </div>
+
     </div>
 
     <!-- Product Grid -->
@@ -107,29 +131,47 @@
     const maxInput = document.getElementById("maxInput"); 
     const minValue = document.getElementById("minValue"); 
     const maxValue = document.getElementById("maxValue"); 
+    const categorySelect = document.querySelector('select[name="category"]');
+    const categoryValue = document.getElementById("categoryValue");
     const filterButton = document.getElementById("filterButton");
-    
-    function updateOutput() { 
+
+    function updateInputLimit() {
         let min = parseInt(minInput.value, 10);
         let max = parseInt(maxInput.value, 10);
 
         minInput.max = max;
-
         maxInput.min = min;
+    }
 
-        minValue.textContent = min; 
-        maxValue.textContent = max; 
-    } 
+    minInput.addEventListener("input", updateInputLimit); 
+    maxInput.addEventListener("input", updateInputLimit); 
 
     filterButton.addEventListener("click", function() {
-        const min = minInput.value;
-        const max = maxInput.value;
-        updateOutput();
-    });
+        updateInputLimit();
 
-    updateOutput();
- 
-     
+        const minPrice = document.getElementById("minInput").value;
+        const maxPrice = document.getElementById("maxInput").value;
+        const category = document.querySelector('select[name="category"]').value;
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Update or delete category
+        if (category && category !== "All Categories") {
+            urlParams.set('category', category);
+        } else {
+            urlParams.delete('category');
+        }
+
+        // Update prices
+        urlParams.set('min_price', minPrice);
+        urlParams.set('max_price', maxPrice);
+        
+        // Always reset to page 1 on new filter
+        urlParams.set('page', 1);
+
+        window.location.href = window.location.pathname + '?' + urlParams.toString();
+
+    });
 
 </script> 
 {% endblock %}

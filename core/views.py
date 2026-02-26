@@ -13,7 +13,7 @@ from .forms import CustomUserCreationForm, ProductForm, OrderStatusForm, Product
 # ==============================
 # 1. 商品浏览 (Block A & C)
 # ==============================
-def product_list(request):
+"""def product_list(request):
     query = request.GET.get('q')
     category_id = request.GET.get('category')
     
@@ -39,7 +39,51 @@ def product_list(request):
         'products': page_obj,
         'categories': Category.objects.all()
     }
+    return render(request, 'core/product_list.html', context)"""
+
+def product_list(request):
+    query = request.GET.get('q')
+    category_id = request.GET.get('category')
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+    
+    # Start with the base queryset
+    products_list = Product.objects.filter(is_active=True).order_by('-created_at')
+
+    # Apply Search
+    if query:
+        products_list = products_list.filter(
+            Q(name__icontains=query) | 
+            Q(description_html__icontains=query) |
+            Q(brand__icontains=query) |
+            Q(material__icontains=query) |
+            Q(origin__icontains=query) 
+        )
+    
+    # Apply Category Filter
+    if category_id and category_id != "All Categories":
+        products_list = products_list.filter(category_id=category_id)
+
+    # Apply Price Filters
+    if min_price:
+        products_list = products_list.filter(price__gte=min_price)
+    if max_price:
+        products_list = products_list.filter(price__lte=max_price)
+
+    paginator = Paginator(products_list, 6) 
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'products': page_obj,
+        'categories': Category.objects.all(),
+        # Pass values back to template to keep inputs filled
+        'selected_category': category_id,
+        'min_p': min_price,
+        'max_p': max_price
+    }
     return render(request, 'core/product_list.html', context)
+
 
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
