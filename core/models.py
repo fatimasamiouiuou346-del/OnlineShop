@@ -44,8 +44,7 @@ class Product(models.Model):
     name = models.CharField("Product Name", max_length=200)
     brand = models.CharField("Brand", max_length=100, blank=True, null=True)
     material = models.CharField("Material", max_length=100, blank=True, null=True)
-    
-    # 注意：origin 字段已经被安全移除，以匹配你的 forms.py
+    origin = models.CharField("Origin", max_length=100, blank=True, null=True)
     
     video = models.FileField("Product Video", upload_to='product_videos/', blank=True, null=True, help_text="Optional short video (MP4, WebM)")
     description_html = models.TextField("Description (HTML)", help_text="Supports HTML formatting")
