@@ -42,8 +42,7 @@ class CustomUserCreationForm(UserCreationForm):
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
-        # 完美匹配你当前的 models.py (包含 video, 移除 origin)
-        fields = ['category', 'name', 'brand', 'material', 'video', 'description_html', 'price', 'stock_quantity', 'is_active']
+        fields = ['category', 'name', 'brand', 'material', 'origin', 'video', 'description_html', 'price', 'stock_quantity', 'is_active']
         widgets = {
             'description_html': forms.Textarea(attrs={'rows': 4}),
             'category': forms.Select(attrs={'class': 'form-select'}),
