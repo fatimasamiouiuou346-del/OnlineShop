@@ -132,5 +132,37 @@
         </div>
         {% endif %}
     </div>
+    <div class="col-md-12 mt-3 pt-3"> 
+        <h4 class="">Related Products</h4>
+        <div class="row">
+            {% for related in related_products %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm hover-effect">
+                    <!-- === 修复: 使用 product.primary_image 作为封面 === -->
+                    {% if related.primary_image %}
+                        <img src="{{ related.primary_image.image.url }}" class="card-img-top" style="height: 220px; object-fit: cover;" alt="{{ related.name }}">
+                    {% else %}
+                        <div class="bg-light text-muted d-flex align-items-center justify-content-center border-bottom" style="height: 220px;">
+                            <i class="bi bi-image" style="font-size: 3rem;"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title text-truncate" title="{{ related.name }}">{{ related.name }}</h5>
+                        <p class="card-text text-danger fw-bold fs-5 mb-3">¥{{ related.price }}</p>
+                        
+                        <a href="{% url 'core:product_detail' related.id %}" class="btn btn-outline-primary w-100 mt-auto">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+                <div class="alert alert-warning w-100 text-center py-5">
+                    <i class="bi bi-search" style="font-size: 2rem;"></i><br>
+                    No products found matching your criteria.
+                </div>
+            {% endfor %}
+    </div>
 </div>
 {% endblock %}

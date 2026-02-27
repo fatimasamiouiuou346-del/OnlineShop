@@ -87,7 +87,21 @@ def product_list(request):
 
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
-    return render(request, 'core/product_detail.html', {'product': product})
+
+    related_products = []
+    
+    if product.brand:
+        related_products = Product.objects.filter(
+            brand=product.brand, 
+            is_active=True
+        ).exclude(pk=pk)[:3]
+    
+    context = {
+        'product': product,
+        'related_products': related_products,
+    }
+
+    return render(request, 'core/product_detail.html', context)
 
 # ==============================
 # 2. 用户注册 (Block A1)
