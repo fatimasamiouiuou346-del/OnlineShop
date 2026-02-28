@@ -89,16 +89,37 @@ def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
 
     related_products = []
+    result = []
     
     if product.brand:
-        related_products = Product.objects.filter(
+        related_products += Product.objects.filter(
             brand=product.brand, 
             is_active=True
         ).exclude(pk=pk)[:3]
+
+    if product.category:
+        related_products += Product.objects.filter(
+            category=product.category, 
+            is_active=True
+        ).exclude(pk=pk)[:3]
+
+    if product.origin:
+        related_products += Product.objects.filter(
+            origin=product.origin, 
+            is_active=True
+        ).exclude(pk=pk)[:3]
+    
+    if product.material:
+        related_products += Product.objects.filter(
+            material=product.material, 
+            is_active=True
+        ).exclude(pk=pk)[:3]
+
+    result = related_products[:3]
     
     context = {
         'product': product,
-        'related_products': related_products,
+        'related_products': result,
     }
 
     return render(request, 'core/product_detail.html', context)
