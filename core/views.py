@@ -256,10 +256,17 @@ def checkout(request):
                 unit_price_snapshot=item.product.price,
                 quantity=item.quantity
             )
+            
+            # === 核心逻辑修复：下单成功时扣除商品真实库存 ===
+            if item.product:
+                # max() 确保库存不会被扣成负数
+                item.product.stock_quantity = max(0, item.product.stock_quantity - item.quantity)
+                item.product.save()
         
         cart_items.delete()
 
     return redirect('core:order_detail', pk=order.id)
+
 
 @login_required(login_url='core:login')
 def order_list(request):
