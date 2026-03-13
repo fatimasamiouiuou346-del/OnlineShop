@@ -134,6 +134,14 @@ class Order(models.Model):
                     status=self.status,
                     comments=f"Status changed from {old_order.status} to {self.status}"
                 )
+                # === 核心逻辑修复：处理订单取消/退款时的库存返还 ===
+                # 如果状态变成了“已取消”或“已退款”，且原来不是这个状态，就把库存加回来
+                terminal_restock_statuses = [self.Status.CANCELLED, self.Status.REFUNDED]
+                if self.status in terminal_restock_statuses and old_order.status not in terminal_restock_statuses:
+                    for item in self.items.all():
+                        if item.product:
+                            item.product.stock_quantity += item.quantity
+                            item.product.save()
         super().save(*args, **kwargs)
 
     @property
