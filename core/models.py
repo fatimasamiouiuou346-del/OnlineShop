@@ -44,7 +44,7 @@ class Product(models.Model):
     name = models.CharField("Product Name", max_length=200)
     brand = models.CharField("Brand", max_length=100, blank=True, null=True)
     material = models.CharField("Material", max_length=100, blank=True, null=True)
-    origin = models.CharField("Origin", max_length=100, blank=True, null=True) # 队友加的字段，完美保留
+    origin = models.CharField("Origin", max_length=100, blank=True, null=True)
     
     video = models.FileField("Product Video", upload_to='product_videos/', blank=True, null=True, help_text="Optional short video (MP4, WebM)")
     description_html = models.TextField("Description (HTML)", help_text="Supports HTML formatting")
@@ -56,8 +56,10 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    # === 核心修复: 强制获取主图的逻辑 ===
     @property
     def primary_image(self):
+        """优先获取被标记为主图的图片，如果没有，则返回第一张"""
         img = self.images.filter(is_primary=True).first()
         if img:
             return img
@@ -76,6 +78,9 @@ class ProductImage(models.Model):
     is_primary = models.BooleanField("Is Primary", default=False)
 
     class Meta:
+        # === 核心修复 1: 强制排序 ===
+        # -is_primary 表示 True(1) 排在 False(0) 前面
+        # 这样 product.images.first() 永远会获取到主图！
         ordering = ['-is_primary', 'id']
 
     def __str__(self):
@@ -124,22 +129,11 @@ class Order(models.Model):
         if self.pk:
             old_order = Order.objects.get(pk=self.pk)
             if old_order.status != self.status:
-                # 记录状态历史
                 OrderStatusHistory.objects.create(
                     order=self,
                     status=self.status,
                     comments=f"Status changed from {old_order.status} to {self.status}"
                 )
-                
-                # === 核心逻辑修复：处理订单取消/退款时的库存返还 ===
-                # 如果状态变成了“已取消”或“已退款”，且原来不是这个状态，就把库存加回来
-                terminal_restock_statuses = [self.Status.CANCELLED, self.Status.REFUNDED]
-                if self.status in terminal_restock_statuses and old_order.status not in terminal_restock_statuses:
-                    for item in self.items.all():
-                        if item.product:
-                            item.product.stock_quantity += item.quantity
-                            item.product.save()
-
         super().save(*args, **kwargs)
 
     @property

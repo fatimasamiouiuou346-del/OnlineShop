@@ -26,9 +26,10 @@ urlpatterns = [
     path('cart/', views.cart_detail, name='cart_detail'),
     path('cart/add/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
     path('cart/remove/<int:item_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('cart/update/<int:item_id>/', views.update_cart_quantity, name='update_cart_quantity'),
 
     # ==============================
-    # 4. 订单系统 (Block A11-A13) 
+    # 4. 订单系统 (Block A11-A13)
     # ==============================
     # 结算动作 (对应 cart_detail.html 里的按钮)
     path('checkout/', views.checkout, name='checkout'),
@@ -37,21 +38,22 @@ urlpatterns = [
     # 订单详情
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('cart/update/<int:item_id>/', views.update_cart_quantity, name='update_cart_quantity'),
-     path('orders/<int:pk>/cancel/', views.cancel_order, name='cancel_order'),
-    # ==============================
-    # 5. 商家后台 (Vendor Portal)
-    # ==============================
-    path('vendor/', views.vendor_dashboard, name='vendor_dashboard'),
-    path('vendor/products/', views.vendor_product_list, name='vendor_product_list'),
-    path('vendor/products/add/', views.vendor_product_add, name='vendor_product_add'),
-    path('vendor/products/<int:pk>/edit/', views.vendor_product_edit, name='vendor_product_edit'),
+    path('orders/<int:pk>/cancel/', views.cancel_order, name='cancel_order'),
     
+    # ==============================
+    # 5. 商家门户 (Vendor Portal)
+    # ==============================
     path('vendor/orders/', views.vendor_order_list, name='vendor_order_list'),
     path('vendor/orders/<int:pk>/', views.vendor_order_detail, name='vendor_order_detail'),
-    path('vendor/products/<int:pk>/delete/', views.vendor_product_delete, name='vendor_product_delete'),
+   
+    path('vendor/products/', views.vendor_product_list, name='vendor_product_list'),
+    path('vendor/products/add/', views.vendor_product_add, name='vendor_product_add'),
+    path('vendor/products/edit/<int:pk>/', views.vendor_product_edit, name='vendor_product_edit'),
+    path('vendor/products/delete/<int:pk>/', views.vendor_product_delete, name='vendor_product_delete'),
+    
+    # ==============================
+    # 6. 图表及分析 (Analytics)
+    # ==============================
+    path('analytics/', views.analytics_dashboard, name='analytics'),
 
-    # ==============================
-    # 5. 数据报告与分析 (Block V)
-    # ==============================
-    path('analytics/', views.analytics_dashboard, name='analytics_dashboard'),
 ]

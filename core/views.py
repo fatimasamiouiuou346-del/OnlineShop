@@ -1,12 +1,14 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.http import JsonResponse
-from django.db.models import Sum, Q, F
-from django.db.models.functions import TruncDate
+from django.db.models import Q, Sum, F
+from django.db.models.functions import TruncDay, TruncMonth, TruncYear
+from django.utils.dateparse import parse_date
+
+import datetime
 import json
 
 from .models import Product, Category, Cart, CartItem, Order, OrderItem
@@ -15,33 +17,6 @@ from .forms import CustomUserCreationForm, ProductForm, OrderStatusForm, Product
 # ==============================
 # 1. 商品浏览 (Block A & C)
 # ==============================
-"""def product_list(request):
-    query = request.GET.get('q')
-    category_id = request.GET.get('category')
-    
-    products_list = Product.objects.filter(is_active=True).order_by('-created_at')
-
-    if query:
-        products_list = products_list.filter(
-            Q(name__icontains=query) | 
-            Q(description_html__icontains=query) |
-            Q(brand__icontains=query) |
-            Q(material__icontains=query) |
-            Q(origin__icontains=query) 
-        )
-    
-    if category_id:
-        products_list = products_list.filter(category_id=category_id)
-
-    paginator = Paginator(products_list, 6) 
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'products': page_obj,
-        'categories': Category.objects.all()
-    }
-    return render(request, 'core/product_list.html', context)"""
 
 def product_list(request):
     query = request.GET.get('q')
@@ -129,6 +104,7 @@ def product_detail(request, pk):
 # ==============================
 # 2. 用户注册 (Block A1)
 # ==============================
+
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
@@ -143,6 +119,7 @@ def register(request):
 # ==============================
 # 3. 购物车逻辑 (Block A7-A10)
 # ==============================
+
 @login_required(login_url='core:login')
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
@@ -159,17 +136,15 @@ def add_to_cart(request, product_id):
         if not item_created:
             cart_item.quantity += 1
             
-    if cart_item.quantity > product.stock_quantity:
-        cart_item.quantity = product.stock_quantity
-            
     cart_item.save()
     cart.save()
+    
     return redirect('core:cart_detail')
 
 @login_required(login_url='core:login')
 def cart_detail(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
-    cart_items = cart.cartitem_set.all().order_by('id')
+    cart_items = cart.cartitem_set.all()
     
     total_price = 0
     for item in cart_items:
@@ -221,10 +196,14 @@ def update_cart_quantity(request, item_id):
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 # ==============================
-# 4. 订单系统 (Block A11-A13, B2)
+# 4. 订单系统 (Block A11-A13)
 # ==============================
+
 @login_required(login_url='core:login')
 def checkout(request):
+    """
+    Block A11: 结算流程，带库存扣除逻辑
+    """
     cart, _ = Cart.objects.get_or_create(user=request.user)
     cart_items = cart.cartitem_set.all()
     
@@ -232,11 +211,16 @@ def checkout(request):
         return redirect('core:product_list')
 
     total_amount = 0
+    
+    # [库存检查] 结算前检查库存是否充足
     for item in cart_items:
+        if item.product.stock_quantity < item.quantity:
+            # 可以在这里加入错误提示 flash message
+            return redirect('core:cart_detail')
         total_amount += item.product.price * item.quantity
 
     with transaction.atomic():
-        address_snapshot = "Default Address"
+        address_snapshot = "用户默认收货地址"
         if request.user.addresses.exists():
             addr = request.user.addresses.first()
             address_snapshot = f"{addr.recipient_name}, {addr.address_line1}, {addr.city}"
@@ -256,32 +240,18 @@ def checkout(request):
                 unit_price_snapshot=item.product.price,
                 quantity=item.quantity
             )
-            
-            # === 核心逻辑修复：下单成功时扣除商品真实库存 ===
-            if item.product:
-                # max() 确保库存不会被扣成负数
-                item.product.stock_quantity = max(0, item.product.stock_quantity - item.quantity)
-                item.product.save()
+            # [扣除库存] 下单成功后实时更新库存
+            item.product.stock_quantity -= item.quantity
+            item.product.save(update_fields=['stock_quantity'])
         
         cart_items.delete()
 
     return redirect('core:order_detail', pk=order.id)
 
-
 @login_required(login_url='core:login')
 def order_list(request):
-    status_filter = request.GET.get('status')
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    
-    if status_filter:
-        orders = orders.filter(status=status_filter)
-        
-    context = {
-        'orders': orders,
-        'status_choices': Order.Status.choices, 
-        'current_status': status_filter
-    }
-    return render(request, 'core/order_list.html', context)
+    return render(request, 'core/order_list.html', {'orders': orders})
 
 @login_required(login_url='core:login')
 def order_detail(request, pk):
@@ -449,48 +419,89 @@ def vendor_order_detail(request, pk):
         
     return render(request, 'vendor/order_detail.html', {'order': order, 'form': form})
 
+# ==============================
+# 6. 图表与分析 (Reports and Analytics)
+# ==============================
 
 @login_required(login_url='core:login')
 def analytics_dashboard(request):
-    
-    if request.user.role != 'Admin' and not request.user.is_superuser:
+    """
+    报告与分析：显示销量Top3及收入折线图
+    """
+    # 限制仅管理员或商家可以访问图表
+    if request.user.role != 'Admin':
         return redirect('core:product_list')
 
-    products_stats = Product.objects.annotate(
-        total_sold=Sum('orderitem__quantity', filter=~Q(orderitem__order__status='Cancelled')),
-        refunded_qty=Sum('orderitem__quantity', filter=Q(orderitem__order__status='Refunded'))
-    ).filter(total_sold__gt=0).order_by('-total_sold')[:3]
-
-    top_products = []
-    for p in products_stats:
-        total = p.total_sold or 0
-        refunded = p.refunded_qty or 0
-        # 计算退货率
-        return_rate = (refunded / total * 100) if total > 0 else 0
-        top_products.append({
-            'name': p.name,
-            'total_sold': total,
-            'refunded_qty': refunded,
-            'return_rate': round(return_rate, 2)
-        })
-
-    sales_trend = Order.objects.filter(
-        ~Q(status='Cancelled')
+    # ------------------
+    # 1. 销量前Top3产品
+    # ------------------
+    # 只统计未取消且非待处理的订单 (已完成/发货等)
+    valid_orders = Order.objects.exclude(status__in=[Order.Status.CANCELLED, Order.Status.REFUNDED, Order.Status.PENDING])
+    
+    top_products = OrderItem.objects.filter(order__in=valid_orders).values(
+        'product_name_snapshot'
     ).annotate(
-        date=TruncDate('created_at')
-    ).values('date').annotate(
-        daily_revenue=Sum('total_amount'),
-        daily_items=Sum('items__quantity')
-    ).order_by('date')
+        total_qty=Sum('quantity'),
+        total_revenue=Sum(F('quantity') * F('unit_price_snapshot'))
+    ).order_by('-total_qty')[:3]
 
-    dates = [item['date'].strftime('%Y-%m-%d') for item in sales_trend]
-    revenues = [float(item['daily_revenue']) for item in sales_trend]
-    volumes = [item['daily_items'] for item in sales_trend]
+    # ------------------
+    # 2. 销售额折线图
+    # ------------------
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    group_by = request.GET.get('group_by', 'day') # 选项：day, month, year
+
+    filtered_orders = valid_orders
+
+    # 日期范围过滤
+    if start_date_str:
+        start_date = parse_date(start_date_str)
+        if start_date:
+            filtered_orders = filtered_orders.filter(created_at__date__gte=start_date)
+    if end_date_str:
+        end_date = parse_date(end_date_str)
+        if end_date:
+            filtered_orders = filtered_orders.filter(created_at__date__lte=end_date)
+
+    # 聚合截断粒度 (年/月/日)
+    if group_by == 'year':
+        trunc_func = TruncYear('created_at')
+    elif group_by == 'month':
+        trunc_func = TruncMonth('created_at')
+    else:
+        trunc_func = TruncDay('created_at')
+
+    revenue_data = filtered_orders.annotate(
+        date_group=trunc_func
+    ).values('date_group').annotate(
+        daily_total=Sum('total_amount')
+    ).order_by('date_group')
+
+    # 准备传给 Chart.js 的数据格式
+    labels = []
+    totals = []
+    for item in revenue_data:
+        if item['date_group']:
+            # 根据粒度格式化显示标签
+            if group_by == 'year':
+                labels.append(item['date_group'].strftime('%Y'))
+            elif group_by == 'month':
+                labels.append(item['date_group'].strftime('%Y-%m'))
+            else:
+                labels.append(item['date_group'].strftime('%Y-%m-%d'))
+            totals.append(float(item['daily_total']))
 
     context = {
         'top_products': top_products,
-        'dates_json': json.dumps(dates),
-        'revenues_json': json.dumps(revenues),
-        'volumes_json': json.dumps(volumes),
+        'labels': labels,
+        'totals': totals,
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+        'group_by': group_by,
     }
     return render(request, 'core/analytics.html', context)
+
+from django.forms import inlineformset_factory
+from .forms import ProductForm, ProductImageFormSet
+
