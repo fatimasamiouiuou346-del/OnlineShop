@@ -182,6 +182,52 @@
         // Keep the search query but wipe the filters
         window.location.href = window.location.pathname + (q ? '?q=' + q : '');
     });
+    // 增强商品列表的键盘导航
+    document.addEventListener('DOMContentLoaded', function() {
+        // 为所有商品卡片添加键盘支持
+        const productCards = document.querySelectorAll('.card.h-100');
+        
+        productCards.forEach((card, index) => {
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-label', `View product details`);
+            
+            // 添加快捷键提示
+            const viewBtn = card.querySelector('a.btn');
+            if (viewBtn) {
+                card.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        window.location.href = viewBtn.href;
+                    }
+                });
+            }
+        });
+        
+        // 为筛选按钮添加快捷键
+        const filterBtn = document.getElementById('filterButton');
+        if (filterBtn) {
+            filterBtn.setAttribute('accesskey', 'f'); // Alt+Shift+F (不同浏览器不同)
+        }
+        
+        const clearBtn = document.getElementById('clearButton');
+        if (clearBtn) {
+            clearBtn.setAttribute('accesskey', 'c');
+        }
+    });
+</script>
 
-</script> 
+<style>
+    /* 商品卡片的键盘焦点样式增强 */
+    .card.h-100:focus {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(13, 110, 253, 0.3) !important;
+    }
+    
+    /* 键盘导航时显示焦点指示器 */
+    .keyboard-user .card.h-100:focus {
+        outline: 3px solid #0d6efd;
+        outline-offset: 2px;
+    }
+</style> 
 {% endblock %}
