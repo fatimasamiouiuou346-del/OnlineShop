@@ -334,4 +334,81 @@
         {% endwith %}
     </div>
 </div>
+
+<!--Block W-->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 快速购买快捷键
+        const addToCartBtn = document.querySelector('button[type="submit"].btn-warning, a.btn-primary');
+        const quantityInput = document.querySelector('input[name="quantity"]');
+        
+        if (addToCartBtn) {
+            // 为添加购物车按钮设置快捷键 (Alt+A)
+            addToCartBtn.setAttribute('accesskey', 'a');
+            
+            // 显示快捷键提示
+            const hint = document.createElement('small');
+            hint.className = 'text-muted d-block mt-2';
+            hint.innerHTML = '<kbd>Alt</kbd> + <kbd>A</kbd> Quick add to cart';
+            addToCartBtn.parentNode.appendChild(hint);
+        }
+        
+        if (quantityInput) {
+            // 数量输入快捷键
+            quantityInput.addEventListener('keydown', function(e) {
+                // 上下箭头调整数量
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.value = Math.min(parseInt(this.value) + 1, parseInt(this.max));
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.value = Math.max(parseInt(this.value) - 1, parseInt(this.min));
+                }
+            });
+        }
+        
+        // 图片轮播键盘控制
+        const carousel = document.getElementById('productCarousel');
+        if (carousel) {
+            carousel.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowLeft') {
+                    const prevBtn = this.querySelector('.carousel-control-prev');
+                    if (prevBtn) prevBtn.click();
+                }
+                if (e.key === 'ArrowRight') {
+                    const nextBtn = this.querySelector('.carousel-control-next');
+                    if (nextBtn) nextBtn.click();
+                }
+            });
+            
+            // 让轮播可聚焦
+            carousel.setAttribute('tabindex', '0');
+            carousel.setAttribute('aria-label', 'Product image carousel. Use left and right arrows to navigate.');
+        }
+    });
+</script>
+
+<style>
+    /* 显示accesskey提示 */
+    [accesskey] {
+        position: relative;
+    }
+    
+    [accesskey]:focus::after {
+        content: ' [' attr(accesskey) ']';
+        font-size: 0.8em;
+        opacity: 0.7;
+    }
+    
+    kbd {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        color: #212529;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 0.8em;
+    }
+</style>
+<!--/Block W-->
 {% endblock %}
