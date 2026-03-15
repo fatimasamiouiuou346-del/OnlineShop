@@ -105,6 +105,264 @@
     {% endif %}
 </div>
 
+<!-- 购物车键盘快捷键提示 -->
+<div class="alert alert-info mt-3 small keyboard-shortcuts">
+    <i class="bi bi-keyboard"></i> <strong>键盘快捷键:</strong>
+    <div class="row mt-2">
+        <div class="col-md-6">
+            <span class="badge bg-dark me-1">Tab</span> / <span class="badge bg-dark me-1">方向键</span> 在商品间移动<br>
+            <span class="badge bg-dark me-1">Enter</span> 编辑数量<br>
+            <span class="badge bg-dark me-1">↑</span> <span class="badge bg-dark me-1">↓</span> 在输入框中调整数量
+        </div>
+        <div class="col-md-6">
+            <span class="badge bg-dark me-1">+</span> 或 <span class="badge bg-dark me-1">=</span> 增加数量 (不在输入框时)<br>
+            <span class="badge bg-dark me-1">-</span> 减少数量 (不在输入框时)<br>
+            <span class="badge bg-dark me-1">Delete</span> 移除商品 (不在输入框时)
+        </div>
+    </div>
+    <p class="text-muted small mt-2 mb-0">
+        <i class="bi bi-info-circle"></i> 提示: 如果快捷键无效，请确保没有在输入框中
+    </p>
+</div>
+
+<style>
+    .keyboard-shortcuts kbd {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        color: #212529;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    
+    /* 高亮当前可操作的行 */
+    .keyboard-focus-row {
+        background-color: rgba(13, 110, 253, 0.05);
+        border-left: 3px solid #0d6efd;
+    }
+</style>
+
+<script>
+    // 增强购物车键盘导航
+    document.addEventListener('DOMContentLoaded', function() {
+        const cartRows = document.querySelectorAll('tbody tr');
+        let currentFocusedRow = null;
+        
+        cartRows.forEach((row, index) => {
+            // 让整行可聚焦
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('data-row-index', index);
+            row.setAttribute('role', 'row');
+            
+            row.addEventListener('focus', function() {
+                // 高亮当前行
+                cartRows.forEach(r => r.classList.remove('keyboard-focus-row'));
+                this.classList.add('keyboard-focus-row');
+                currentFocusedRow = this;
+            });
+            
+            row.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // 聚焦到数量输入框
+                    const qtyInput = this.querySelector('input[type="text"]');
+                    if (qtyInput) {
+                        qtyInput.focus();
+                        qtyInput.select();
+                    }
+                }
+            });
+        });
+
+        // 为数量输入框添加键盘事件
+        const qtyInputs = document.querySelectorAll('input[id^="qty-"]');
+        qtyInputs.forEach(input => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                    
+                    // 返回行焦点
+                    const row = this.closest('tr');
+                    if (row) {
+                        row.focus();
+                    }
+                }
+                
+                // 在输入框中也可以用箭头键微调
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const itemId = this.id.replace('qty-', '');
+                    updateQuantity(itemId, 1);
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const itemId = this.id.replace('qty-', '');
+                    updateQuantity(itemId, -1);
+                }
+            });
+        });
+
+        // ========== 全局键盘快捷键 ==========
+        document.addEventListener('keydown', function(e) {
+            // 只在购物车页面生效
+            if (!window.location.pathname.includes('/cart/')) return;
+            
+            // 获取当前焦点元素
+            const activeElement = document.activeElement;
+            const currentRow = activeElement?.closest('tr');
+            
+            // 如果没有选中任何行，尝试找到高亮的行
+            let targetRow = currentRow;
+            if (!targetRow && currentFocusedRow) {
+                targetRow = currentFocusedRow;
+            }
+            
+            // 如果还没有，就选择第一行
+            if (!targetRow && cartRows.length > 0) {
+                targetRow = cartRows[0];
+            }
+            
+            if (!targetRow) return;
+            
+            const itemId = targetRow.id.replace('cart-row-', '');
+            
+            // === 使用 Alt 组合键 (避免与浏览器冲突) ===
+            if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+                switch(e.key) {
+                    case '+':
+                    case '=':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Alt + + pressed');
+                        updateQuantity(itemId, 1);
+                        showKeyHint('add count: +1');
+                        break;
+                        
+                    case '-':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Alt + - pressed');
+                        updateQuantity(itemId, -1);
+                        showKeyHint('remove count: -1');
+                        break;
+                        
+                    case 'Delete':
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Alt + Delete pressed');
+                        removeItem(itemId);
+                        break;
+                }
+            }
+
+        // 显示操作提示
+        function showKeyHint(message) {
+            let hint = document.getElementById('keyboard-hint-toast');
+            if (!hint) {
+                hint = document.createElement('div');
+                hint.id = 'keyboard-hint-toast';
+                hint.style.cssText = `
+                    position: fixed;
+                    bottom: 80px;
+                    right: 20px;
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    padding: 10px 20px;
+                    border-radius: 30px;
+                    font-size: 14px;
+                    z-index: 10000;
+                    animation: fadeInOut 1.5s ease;
+                `;
+                document.body.appendChild(hint);
+                
+                // 添加动画样式
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes fadeInOut {
+                        0% { opacity: 0; transform: translateY(10px); }
+                        15% { opacity: 1; transform: translateY(0); }
+                        85% { opacity: 1; transform: translateY(0); }
+                        100% { opacity: 0; transform: translateY(-10px); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            hint.textContent = `⌨️ ${message}`;
+            hint.style.display = 'block';
+            
+            setTimeout(() => {
+                hint.style.display = 'none';
+            }, 1500);
+        }
+        
+        // 移除商品函数
+        function removeItem(itemId) {
+            if (confirm('Remove this item?')) {
+                const removeLink = document.querySelector(`#cart-row-${itemId} a.btn-outline-danger`);
+                if (removeLink) {
+                    window.location.href = removeLink.href;
+                }
+            }
+        }
+    });
+
+    // AJAX 更新数量函数
+    function updateQuantity(itemId, change) {
+        const qtyInput = document.getElementById(`qty-${itemId}`);
+        if (!qtyInput) return;
+        
+        let currentQty = parseInt(qtyInput.value);
+        let newQty = currentQty + change;
+
+        // 最小数量限制为 1
+        if (newQty < 1) {
+            showKeyHint('数量不能小于1');
+            return; 
+        }
+
+        // 显示加载状态
+        qtyInput.style.backgroundColor = '#f0f0f0';
+
+        // 向后端发送请求
+        fetch(`/cart/update/${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ 'quantity': newQty })
+        })
+        .then(response => response.json())
+        .then(data => {
+            qtyInput.style.backgroundColor = '';
+            
+            if (data.success) {
+                // 请求成功：更新页面数值
+                qtyInput.value = newQty;
+                document.getElementById(`subtotal-${itemId}`).innerText = parseFloat(data.subtotal).toFixed(2);
+                document.getElementById('cart-total').innerText = parseFloat(data.total_price).toFixed(2);
+                
+                // 短暂高亮显示更新
+                const subtotalSpan = document.getElementById(`subtotal-${itemId}`);
+                subtotalSpan.style.transition = 'background-color 0.3s';
+                subtotalSpan.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    subtotalSpan.style.backgroundColor = '';
+                }, 300);
+            } else {
+                alert(data.error || '更新失败');
+            }
+        })
+        .catch(error => {
+            qtyInput.style.backgroundColor = '';
+            console.error('Error:', error);
+            alert('网络错误，请重试');
+        });
+    }
+
 <!-- === A9: AJAX JavaScript 逻辑 === -->
 <script>
 function updateQuantity(itemId, change) {
