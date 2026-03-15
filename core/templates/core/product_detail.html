@@ -164,4 +164,174 @@
             {% endfor %}
     </div>
 </div>
+
+<!-- ========================================== -->
+<!-- Block T: 用戶評論區域 (User Reviews) -->
+<!-- ========================================== -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h3 class="border-bottom pb-2 mb-4">Customer Reviews</h3>
+        
+        <!-- Block T: 顯示消息提示 -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <!-- Block T: 評論列表 -->
+        {% with reviews=product.reviews.all %}
+            <!-- 顯示平均評分 -->
+            {% if reviews %}
+                <div class="mb-4">
+                    {% with total_reviews=reviews.count %}
+                        {% with avg_rating=reviews|dictsort:"rating"|last %}
+                            {% with avg=0 %}
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= avg_rating.rating %}
+                                        <i class="bi bi-star-fill text-warning"></i>
+                                    {% else %}
+                                        <i class="bi bi-star text-warning"></i>
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="ms-2 text-muted">({{ total_reviews }} review{{ total_reviews|pluralize }})</span>
+                            {% endwith %}
+                        {% endwith %}
+                    {% endwith %}
+                </div>
+            {% endif %}
+            
+            <!-- 評論列表 -->
+            <div class="reviews-list mt-4">
+                {% for review in reviews|dictsortreversed:"created_at" %}
+                <div class="card mb-3 border-0 bg-light">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ review.user.full_name|default:review.user.username }}</strong>
+                                <small class="text-muted ms-2">{{ review.created_at|date:"Y-m-d H:i" }}</small>
+                            </div>
+                            
+                            <!-- Block T: 如果是當前用戶的評論，顯示編輯/刪除按鈕 -->
+                            {% if user.is_authenticated and user.id == review.user.id %}
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editReviewModal{{ review.id }}">
+                                    Edit
+                                </button>
+                                <form action="{% url 'core:delete_review' review.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this review?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                            
+                            <!-- Edit Review Modal -->
+                            <div class="modal fade" id="editReviewModal{{ review.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form action="{% url 'core:edit_review' review.id %}" method="post">
+                                            {% csrf_token %}
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Edit Your Review</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Rating</label>
+                                                    <select name="rating" class="form-select" required>
+                                                        {% for i in "12345"|make_list %}
+                                                        <option value="{{ forloop.counter }}" {% if forloop.counter == review.rating %}selected{% endif %}>
+                                                            {{ forloop.counter }} Star{% if forloop.counter != 1 %}s{% endif %}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Your Comment</label>
+                                                    <textarea name="comment" class="form-control" rows="4" required>{{ review.comment }}</textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Update Review</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 評分顯示（星星） -->
+                        <div class="mb-2">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                {% else %}
+                                    <i class="bi bi-star text-warning"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- 評論內容 -->
+                        <p class="mb-0">{{ review.comment|linebreaksbr }}</p>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    No reviews yet.
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Block T: 添加評論表單（僅對有資格用戶顯示） -->
+            {% if user.is_authenticated %}
+                {% with can_review=user_eligibility.can_review %}
+                    {% if can_review %}
+                        <div class="card mt-4">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Write a Review</h5>
+                            </div>
+                            <div class="card-body">
+                                <form action="{% url 'core:add_review' product.id %}" method="post">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label class="form-label">Your Rating</label>
+                                        <select name="rating" class="form-select" required>
+                                            <option value="">Choose rating...</option>
+                                            {% for i in "12345"|make_list %}
+                                            <option value="{{ forloop.counter }}">{{ forloop.counter }} Star{% if forloop.counter != 1 %}s{% endif %}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Your Review</label>
+                                        <textarea name="comment" class="form-control" rows="4" placeholder="Share your thoughts about this product..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-secondary mt-4">
+                            {% if user_eligibility.has_ordered %}
+                                <i class="bi bi-info-circle"></i> 
+                                You can review this product after your order has been <strong>shipped</strong>.
+                            {% else %}
+                                <i class="bi bi-info-circle"></i> 
+                                You can only review products you have purchased.
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+            {% else %}
+                <div class="alert alert-secondary mt-4">
+                    <a href="{% url 'core:login' %}?next={{ request.path }}" class="alert-link">Login</a> to write a review.
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+</div>
 {% endblock %}

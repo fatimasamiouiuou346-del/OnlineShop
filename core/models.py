@@ -134,6 +134,14 @@ class Order(models.Model):
                     status=self.status,
                     comments=f"Status changed from {old_order.status} to {self.status}"
                 )
+                # === 核心逻辑修复：处理订单取消/退款时的库存返还 ===
+                # 如果状态变成了“已取消”或“已退款”，且原来不是这个状态，就把库存加回来
+                terminal_restock_statuses = [self.Status.CANCELLED, self.Status.REFUNDED]
+                if self.status in terminal_restock_statuses and old_order.status not in terminal_restock_statuses:
+                    for item in self.items.all():
+                        if item.product:
+                            item.product.stock_quantity += item.quantity
+                            item.product.save()
         super().save(*args, **kwargs)
 
     @property
@@ -169,3 +177,17 @@ class Review(models.Model):
     rating = models.IntegerField("Rating", choices=[(i, str(i)) for i in range(1, 6)])
     comment = models.TextField("Comment", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+# Block T: User Generated Content (Reviews)
+class Review(models.Model):
+    """
+    Block T: 商品评价与评分
+    """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.IntegerField("Rating", choices=[(i, str(i)) for i in range(1, 6)])
+    comment = models.TextField("Comment", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review by {self.user.username} on {self.product.name} (Rating: {self.rating})"

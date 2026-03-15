@@ -92,11 +92,34 @@ def product_detail(request, pk):
             is_active=True
         ).exclude(pk=pk)[:3]
 
+    # ==============================
+    # Block T: 檢查用戶是否可以評論
+    # ==============================
+    user_eligibility = {
+        'can_review': False,
+        'has_ordered': False,
+    }
+    
+    if request.user.is_authenticated:
+        # 檢查用戶是否有該產品的訂單且已出貨
+        has_shipped_order = Order.objects.filter(
+            user=request.user,
+            status=Order.Status.SHIPPED,
+            items__product=product
+        ).exists()
+        
+        user_eligibility['has_ordered'] = has_shipped_order
+        user_eligibility['can_review'] = has_shipped_order and not Review.objects.filter(
+            product=product, 
+            user=request.user
+        ).exists()
+
     result = related_products[:3]
     
     context = {
         'product': product,
         'related_products': result,
+        'user_eligibility': user_eligibility,  # Block T: 傳遞用戶資格
     }
 
     return render(request, 'core/product_detail.html', context)
@@ -505,3 +528,104 @@ def analytics_dashboard(request):
 from django.forms import inlineformset_factory
 from .forms import ProductForm, ProductImageFormSet
 
+# ==============================
+# Block T: 用戶評論功能 (限制購買且出貨才能評論)
+# ==============================
+
+from django.contrib import messages
+from django.db.models import Q
+from .models import Review, Order
+
+def can_user_review_product(user, product):
+    """
+    Block T: 檢查用戶是否可以評論該商品
+    條件：用戶必須有該商品的訂單，且訂單狀態為 Shipped (已出貨)
+    """
+    if not user.is_authenticated:
+        return False
+    
+    # 檢查用戶是否有該商品的訂單且狀態為 Shipped
+    return Order.objects.filter(
+        user=user,
+        status=Order.Status.SHIPPED,  # 只允許已出貨的訂單
+        items__product=product
+    ).exists()
+
+
+@login_required(login_url='core:login')
+def add_review(request, product_id):
+    """
+    Block T: 用戶添加評論 (只有購買且出貨才能評論)
+    """
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+    
+    # Block T: 檢查用戶是否有資格評論
+    if not can_user_review_product(request.user, product):
+        messages.error(request, "You can only review products you have purchased and received.")
+        return redirect('core:product_detail', pk=product_id)
+    
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+        
+        # 簡單驗證
+        if rating and comment:
+            # 檢查用戶是否已經評論過這個商品（可選：只允許一次）
+            existing_review = Review.objects.filter(product=product, user=request.user).first()
+            if existing_review:
+                messages.warning(request, "You have already reviewed this product. You can edit your existing review.")
+                return redirect('core:product_detail', pk=product_id)
+            
+            # 創建新評論
+            Review.objects.create(
+                product=product,
+                user=request.user,
+                rating=int(rating),
+                comment=comment
+            )
+            messages.success(request, "Your review has been submitted successfully!")
+        else:
+            messages.error(request, "Please provide both rating and comment.")
+    
+    return redirect('core:product_detail', pk=product_id)
+
+
+@login_required(login_url='core:login')
+def edit_review(request, review_id):
+    """
+    Block T: 用戶編輯自己的評論
+    """
+    review = get_object_or_404(Review, id=review_id, user=request.user)
+    
+    # Block T: 再次確認用戶仍然有資格評論（可選，防止出貨狀態被改變）
+    if not can_user_review_product(request.user, review.product):
+        messages.error(request, "You are no longer eligible to review this product.")
+        return redirect('core:product_detail', pk=review.product.id)
+    
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+        
+        if rating and comment:
+            review.rating = int(rating)
+            review.comment = comment
+            review.save()
+            messages.success(request, "Your review has been updated!")
+        else:
+            messages.error(request, "Please provide both rating and comment.")
+        
+        return redirect('core:product_detail', pk=review.product.id)
+    
+    return redirect('core:product_detail', pk=review.product.id)
+
+
+@login_required(login_url='core:login')
+def delete_review(request, review_id):
+    """
+    Block T: 用戶刪除自己的評論
+    """
+    review = get_object_or_404(Review, id=review_id, user=request.user)
+    product_id = review.product.id
+    review.delete()
+    messages.success(request, "Your review has been deleted.")
+    return redirect('core:product_detail', pk=product_id)
