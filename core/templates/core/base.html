@@ -16,6 +16,9 @@
         }
     </style>
 </head>
+
+{% load static %}
+    
 <body class="d-flex flex-column min-vh-100">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top shadow-sm">
@@ -49,6 +52,9 @@
                                 <i class="bi bi-speedometer2"></i> Vendor Portal
                             </a>
                             <a href="{% url 'core:analytics_dashboard' %}" class="btn btn-outline-info me-2">📊 Analytics</a>
+                            <a href="{% url 'core:keyboard_help' %}" class="btn btn-outline-light me-2" title="List of Keyboard Operation">
+                                <i class="bi bi-keyboard"></i> <span class="d-none d-lg-inline">快捷键</span>
+                            </a>
                         {% else %}
                             <!-- 顾客专属：My Orders 和 Cart -->
                             <a href="{% url 'core:order_list' %}" class="btn btn-outline-light me-2">
@@ -56,12 +62,16 @@
                             </a>
 
                             <a href="{% url 'core:cart_detail' %}" class="btn btn-outline-warning me-2 position-relative">
+
                                 <i class="bi bi-cart3"></i> Cart
                                 {% if cart_item_count > 0 %}
                                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                                     {{ cart_item_count }}
                                 </span>
                                 {% endif %}
+                            </a>
+                            <a href="{% url 'core:keyboard_help' %}" class="btn btn-outline-light me-2" title="List of Keyboard Operation">
+                                <i class="bi bi-keyboard"></i> <span class="d-none d-lg-inline">快捷键</span>
                             </a>
                         {% endif %}
                         <!-- =========================== -->
@@ -94,6 +104,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'core/js/keyboard.js' %}"></script>
 </body>
 </html>
 
