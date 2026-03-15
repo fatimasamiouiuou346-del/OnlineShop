@@ -63,4 +63,7 @@ urlpatterns = [
     path('review/<int:review_id>/edit/', views.edit_review, name='edit_review'),
     path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
 
+    # Block W: 键盘帮助页面
+    path('keyboard-help/', views.keyboard_help, name='keyboard_help'),
+    
 ]
