@@ -525,6 +525,11 @@ def analytics_dashboard(request):
     }
     return render(request, 'core/analytics.html', context)
 
+# Block W
+def keyboard_help(request):
+    """键盘操作帮助页面"""
+    return render(request, 'core/keyboard_help.html')
+
 from django.forms import inlineformset_factory
 from .forms import ProductForm, ProductImageFormSet
 
