@@ -44,8 +44,6 @@
                                 </div>
                             </td>
                             <td>¥{{ item.product.price }}</td>
-                            
-                            <!-- === A9: 修改数量的控制按钮 === -->
                             <td class="text-center">
                                 <div class="input-group input-group-sm mx-auto" style="width: 110px;">
                                     <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity('{{ item.id }}', -1)">-</button>
@@ -53,10 +51,7 @@
                                     <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity('{{ item.id }}', 1)">+</button>
                                 </div>
                             </td>
-                            
-                            <!-- 注意这里的 id，JS 需要靠它来更新数字 -->
                             <td class="text-danger fw-bold">¥<span id="subtotal-{{ item.id }}">{{ item.subtotal }}</span></td>
-                            
                             <td>
                                 <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this item?')">
                                     Remove
@@ -79,7 +74,6 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-4 align-items-center">
                     <span class="fs-5">Total:</span>
-                    <!-- 注意这里的 id="cart-total" -->
                     <span class="text-danger fs-3 fw-bold">¥<span id="cart-total">{{ total_price }}</span></span>
                 </div>
                 
@@ -135,7 +129,6 @@
         font-size: 0.9em;
     }
     
-    /* 高亮当前可操作的行 */
     .keyboard-focus-row {
         background-color: rgba(13, 110, 253, 0.05);
         border-left: 3px solid #0d6efd;
@@ -143,410 +136,198 @@
 </style>
 
 <script>
-    // 增强购物车键盘导航
-    document.addEventListener('DOMContentLoaded', function() {
-        const cartRows = document.querySelectorAll('tbody tr');
-        let currentFocusedRow = null;
+document.addEventListener('DOMContentLoaded', function() {
+    const cartRows = document.querySelectorAll('tbody tr');
+    let currentFocusedRow = null;
+    
+    cartRows.forEach((row, index) => {
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('data-row-index', index);
+        row.setAttribute('role', 'row');
         
-        cartRows.forEach((row, index) => {
-            // 让整行可聚焦
-            row.setAttribute('tabindex', '0');
-            row.setAttribute('data-row-index', index);
-            row.setAttribute('role', 'row');
+        row.addEventListener('focus', function() {
+            cartRows.forEach(r => r.classList.remove('keyboard-focus-row'));
+            this.classList.add('keyboard-focus-row');
+            currentFocusedRow = this;
+        });
+        
+        row.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                const qtyInput = this.querySelector('input[type="text"]');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                }
+            }
+        });
+    });
+
+    const qtyInputs = document.querySelectorAll('input[id^="qty-"]');
+    qtyInputs.forEach(input => {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+                const row = this.closest('tr');
+                if (row) {
+                    row.focus();
+                }
+            }
             
-            row.addEventListener('focus', function() {
-                // 高亮当前行
-                cartRows.forEach(r => r.classList.remove('keyboard-focus-row'));
-                this.classList.add('keyboard-focus-row');
-                currentFocusedRow = this;
-            });
-            
-            row.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const itemId = this.id.replace('qty-', '');
+                updateQuantity(itemId, 1);
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const itemId = this.id.replace('qty-', '');
+                updateQuantity(itemId, -1);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (!window.location.pathname.includes('/cart/')) return;
+        
+        const activeElement = document.activeElement;
+        const currentRow = activeElement?.closest('tr');
+        
+        let targetRow = currentRow;
+        if (!targetRow && currentFocusedRow) {
+            targetRow = currentFocusedRow;
+        }
+        
+        if (!targetRow && cartRows.length > 0) {
+            targetRow = cartRows[0];
+        }
+        
+        if (!targetRow) return;
+        
+        const itemId = targetRow.id.replace('cart-row-', '');
+        
+        if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+            switch(e.key) {
+                case '+':
+                case '=':
                     e.preventDefault();
                     e.stopPropagation();
-                    // 聚焦到数量输入框
-                    const qtyInput = this.querySelector('input[type="text"]');
-                    if (qtyInput) {
-                        qtyInput.focus();
-                        qtyInput.select();
-                    }
-                }
-            });
-        });
-
-        // 为数量输入框添加键盘事件
-        const qtyInputs = document.querySelectorAll('input[id^="qty-"]');
-        qtyInputs.forEach(input => {
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.blur();
-                    
-                    // 返回行焦点
-                    const row = this.closest('tr');
-                    if (row) {
-                        row.focus();
-                    }
-                }
-                
-                // 在输入框中也可以用箭头键微调
-                if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    const itemId = this.id.replace('qty-', '');
                     updateQuantity(itemId, 1);
-                }
-                if (e.key === 'ArrowDown') {
+                    showKeyHint('增加数量: +1');
+                    break;
+                    
+                case '-':
                     e.preventDefault();
-                    const itemId = this.id.replace('qty-', '');
+                    e.stopPropagation();
                     updateQuantity(itemId, -1);
-                }
-            });
-        });
+                    showKeyHint('减少数量: -1');
+                    break;
+                    
+                case 'Delete':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeItem(itemId);
+                    break;
+            }
+        }
+    });
 
-        // ========== 全局键盘快捷键 ==========
-        document.addEventListener('keydown', function(e) {
-            // 只在购物车页面生效
-            if (!window.location.pathname.includes('/cart/')) return;
+    function showKeyHint(message) {
+        let hint = document.getElementById('keyboard-hint-toast');
+        if (!hint) {
+            hint = document.createElement('div');
+            hint.id = 'keyboard-hint-toast';
+            hint.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                right: 20px;
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 30px;
+                font-size: 14px;
+                z-index: 10000;
+                animation: fadeInOut 1.5s ease;
+            `;
+            document.body.appendChild(hint);
             
-            // 获取当前焦点元素
-            const activeElement = document.activeElement;
-            const currentRow = activeElement?.closest('tr');
-            
-            // 如果没有选中任何行，尝试找到高亮的行
-            let targetRow = currentRow;
-            if (!targetRow && currentFocusedRow) {
-                targetRow = currentFocusedRow;
-            }
-            
-            // 如果还没有，就选择第一行
-            if (!targetRow && cartRows.length > 0) {
-                targetRow = cartRows[0];
-            }
-            
-            if (!targetRow) return;
-            
-            const itemId = targetRow.id.replace('cart-row-', '');
-            
-            // === 使用 Alt 组合键 (避免与浏览器冲突) ===
-            if (e.altKey && !e.ctrlKey && !e.shiftKey) {
-                switch(e.key) {
-                    case '+':
-                    case '=':
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Alt + + pressed');
-                        updateQuantity(itemId, 1);
-                        showKeyHint('add count: +1');
-                        break;
-                        
-                    case '-':
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Alt + - pressed');
-                        updateQuantity(itemId, -1);
-                        showKeyHint('remove count: -1');
-                        break;
-                        
-                    case 'Delete':
-                        e.preventDefault();
-                        e.stopPropagation();
-                        console.log('Alt + Delete pressed');
-                        removeItem(itemId);
-                        break;
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translateY(10px); }
+                    15% { opacity: 1; transform: translateY(0); }
+                    85% { opacity: 1; transform: translateY(0); }
+                    100% { opacity: 0; transform: translateY(-10px); }
                 }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        hint.textContent = `⌨️ ${message}`;
+        hint.style.display = 'block';
+        
+        setTimeout(() => {
+            hint.style.display = 'none';
+        }, 1500);
+    }
+    
+    function removeItem(itemId) {
+        if (confirm('确定要移除这个商品吗？')) {
+            const removeLink = document.querySelector(`#cart-row-${itemId} a.btn-outline-danger`);
+            if (removeLink) {
+                window.location.href = removeLink.href;
             }
-        });
+        }
+    }
+});
 
-        // 显示操作提示
-        function showKeyHint(message) {
-            let hint = document.getElementById('keyboard-hint-toast');
-            if (!hint) {
-                hint = document.createElement('div');
-                hint.id = 'keyboard-hint-toast';
-                hint.style.cssText = `
-                    position: fixed;
-                    bottom: 80px;
-                    right: 20px;
-                    background: rgba(0,0,0,0.8);
-                    color: white;
-                    padding: 10px 20px;
-                    border-radius: 30px;
-                    font-size: 14px;
-                    z-index: 10000;
-                    animation: fadeInOut 1.5s ease;
-                `;
-                document.body.appendChild(hint);
-                
-                // 添加动画样式
-                const style = document.createElement('style');
-                style.textContent = `
-                    @keyframes fadeInOut {
-                        0% { opacity: 0; transform: translateY(10px); }
-                        15% { opacity: 1; transform: translateY(0); }
-                        85% { opacity: 1; transform: translateY(0); }
-                        100% { opacity: 0; transform: translateY(-10px); }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
+function updateQuantity(itemId, change) {
+    const qtyInput = document.getElementById(`qty-${itemId}`);
+    if (!qtyInput) return;
+    
+    let currentQty = parseInt(qtyInput.value);
+    let newQty = currentQty + change;
+
+    if (newQty < 1) {
+        showKeyHint('数量不能小于1');
+        return; 
+    }
+
+    qtyInput.style.backgroundColor = '#f0f0f0';
+
+    fetch(`/cart/update/${itemId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ 'quantity': newQty })
+    })
+    .then(response => response.json())
+    .then(data => {
+        qtyInput.style.backgroundColor = '';
+        
+        if (data.success) {
+            qtyInput.value = newQty;
+            document.getElementById(`subtotal-${itemId}`).innerText = parseFloat(data.subtotal).toFixed(2);
+            document.getElementById('cart-total').innerText = parseFloat(data.total_price).toFixed(2);
             
-            hint.textContent = `⌨️ ${message}`;
-            hint.style.display = 'block';
-            
+            const subtotalSpan = document.getElementById(`subtotal-${itemId}`);
+            subtotalSpan.style.transition = 'background-color 0.3s';
+            subtotalSpan.style.backgroundColor = '#d4edda';
             setTimeout(() => {
-                hint.style.display = 'none';
-            }, 1500);
-        }
-        
-        // 移除商品函数
-        function removeItem(itemId) {
-            if (confirm('Remove this item?')) {
-                const removeLink = document.querySelector(`#cart-row-${itemId} a.btn-outline-danger`);
-                if (removeLink) {
-                    window.location.href = removeLink.href;
-                }
-            }
-        }
-    });
-
-    // AJAX 更新数量函数
-    function updateQuantity(itemId, change) {
-        const qtyInput = document.getElementById(`qty-${itemId}`);
-        if (!qtyInput) return;
-        
-        let currentQty = parseInt(qtyInput.value);
-        let newQty = currentQty + change;
-
-        // 最小数量限制为 1
-        if (newQty < 1) {
-            showKeyHint('数量不能小于1');
-            return; 
-        }
-
-        // 显示加载状态
-        qtyInput.style.backgroundColor = '#f0f0f0';
-
-        // 向后端发送请求
-        fetch(`/cart/update/${itemId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ 'quantity': newQty })
-        })
-        .then(response => response.json())
-        .then(data => {
-            qtyInput.style.backgroundColor = '';
-            
-            if (data.success) {
-                // 请求成功：更新页面数值
-                qtyInput.value = newQty;
-                document.getElementById(`subtotal-${itemId}`).innerText = parseFloat(data.subtotal).toFixed(2);
-                document.getElementById('cart-total').innerText = parseFloat(data.total_price).toFixed(2);
-                
-                // 短暂高亮显示更新
-                const subtotalSpan = document.getElementById(`subtotal-${itemId}`);
-                subtotalSpan.style.transition = 'background-color 0.3s';
-                subtotalSpan.style.backgroundColor = '#d4edda';
-                setTimeout(() => {
-                    subtotalSpan.style.backgroundColor = '';
-                }, 300);
-            } else {
-                alert(data.error || '更新失败');
-            }
-        })
-        .catch(error => {
-            qtyInput.style.backgroundColor = '';
-            console.error('Error:', error);
-            alert('网络错误，请重试');
-        });
-    }
-
-<!-- === A9: AJAX JavaScript 逻辑 === -->
-<script>
-function updateQuantity(itemId, change) {
-    const qtyInput = document.getElementById(`qty-${itemId}`);
-    let currentQty = parseInt(qtyInput.value);
-    let newQty = currentQty + change;
-
-    // 最小数量限制为 1
-    if (newQty < 1) {
-        return; 
-    }
-
-    // 向后端发送请求
-    fetch(`/cart/update/${itemId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}' // 安全令牌，必须携带
-        },
-        body: JSON.stringify({ 'quantity': newQty })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // 请求成功：立刻更新页面上的数值，不用刷新网页！
-            qtyInput.value = newQty;
-            // 更新小计 (保留两位小数)
-            document.getElementById(`subtotal-${itemId}`).innerText = parseFloat(data.subtotal).toFixed(2);
-            // 更新总计
-            document.getElementById('cart-total').innerText = parseFloat(data.total_price).toFixed(2);
+                subtotalSpan.style.backgroundColor = '';
+            }, 300);
         } else {
-            // 如果后端返回失败 (比如库存不足)
-            alert(data.error);
+            alert(data.error || '更新失败');
         }
     })
     .catch(error => {
+        qtyInput.style.backgroundColor = '';
         console.error('Error:', error);
-    });
-}
-</script>
-
-
-<div class="row">
-    <div class="col-12 mb-4">
-        <h2 class="fw-bold">My Shopping Cart</h2>
-    </div>
-
-    {% if cart_items %}
-    <!-- Cart Items List -->
-    <div class="col-md-8">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0">Items in Cart</h5>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col" class="ps-4">Product</th>
-                            <th scope="col">Price</th>
-                            <th scope="col" class="text-center">Quantity</th>
-                            <th scope="col">Subtotal</th>
-                            <th scope="col">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in cart_items %}
-                        <tr id="cart-row-{{ item.id }}">
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center">
-                                    <a href="{% url 'core:product_detail' item.product.id %}">
-                                        {% if item.product.images.first %}
-                                            <img src="{{ item.product.images.first.image.url }}" class="rounded border" style="width: 60px; height: 60px; object-fit: cover;" alt="{{ item.product.name }}">
-                                        {% else %}
-                                            <div class="bg-secondary text-white rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 12px;">No Image</div>
-                                        {% endif %}
-                                    </a>
-                                    <div class="ms-3">
-                                        <a href="{% url 'core:product_detail' item.product.id %}" class="text-decoration-none text-dark fw-bold">
-                                            {{ item.product.name }}
-                                        </a>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>¥{{ item.product.price }}</td>
-                            
-                            <!-- === A9: 修改数量的控制按钮 === -->
-                            <td class="text-center">
-                                <div class="input-group input-group-sm mx-auto" style="width: 110px;">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity('{{ item.id }}', -1)">-</button>
-                                    <input type="text" class="form-control text-center bg-white" id="qty-{{ item.id }}" value="{{ item.quantity }}" readonly>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="updateQuantity('{{ item.id }}', 1)">+</button>
-                                </div>
-                            </td>
-                            
-                            <!-- 注意这里的 id，JS 需要靠它来更新数字 -->
-                            <td class="text-danger fw-bold">¥<span id="subtotal-{{ item.id }}">{{ item.subtotal }}</span></td>
-                            
-                            <td>
-                                <a href="{% url 'core:remove_from_cart' item.id %}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this item?')">
-                                    Remove
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Checkout Panel -->
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom">
-                <h5 class="mb-0">Order Summary</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-4 align-items-center">
-                    <span class="fs-5">Total:</span>
-                    <!-- 注意这里的 id="cart-total" -->
-                    <span class="text-danger fs-3 fw-bold">¥<span id="cart-total">{{ total_price }}</span></span>
-                </div>
-                
-                <div class="d-grid gap-2">
-                    <a href="{% url 'core:checkout' %}" class="btn btn-success btn-lg shadow-sm">
-                        Checkout Now
-                    </a>
-                    <a href="{% url 'core:product_list' %}" class="btn btn-outline-secondary">
-                        Continue Shopping
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {% else %}
-    <!-- Empty Cart -->
-    <div class="col-12 text-center py-5">
-        <div class="mb-4"><span style="font-size: 4rem;">🛒</span></div>
-        <h3 class="text-muted">Your cart is empty</h3>
-        <a href="{% url 'core:product_list' %}" class="btn btn-primary btn-lg mt-3">Start Shopping</a>
-    </div>
-    {% endif %}
-</div>
-
-<!-- === A9: AJAX JavaScript 逻辑 === -->
-<script>
-function updateQuantity(itemId, change) {
-    const qtyInput = document.getElementById(`qty-${itemId}`);
-    let currentQty = parseInt(qtyInput.value);
-    let newQty = currentQty + change;
-
-    // 最小数量限制为 1
-    if (newQty < 1) {
-        return; 
-    }
-
-    // 向后端发送请求
-    fetch(`/cart/update/${itemId}/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}' // 安全令牌，必须携带
-        },
-        body: JSON.stringify({ 'quantity': newQty })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // 请求成功：立刻更新页面上的数值，不用刷新网页！
-            qtyInput.value = newQty;
-            // 更新小计 (保留两位小数)
-            document.getElementById(`subtotal-${itemId}`).innerText = parseFloat(data.subtotal).toFixed(2);
-            // 更新总计
-            document.getElementById('cart-total').innerText = parseFloat(data.total_price).toFixed(2);
-        } else {
-            // 如果后端返回失败 (比如库存不足)
-            alert(data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
+        alert('网络错误，请重试');
     });
 }
 </script>
