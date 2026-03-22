@@ -187,21 +187,59 @@
         {% with reviews=product.reviews.all %}
             <!-- 顯示平均評分 -->
             {% if reviews %}
-                <div class="mb-4">
-                    {% with total_reviews=reviews.count %}
-                        {% with avg_rating=reviews|dictsort:"rating"|last %}
-                            {% with avg=0 %}
-                                {% for i in "12345"|make_list %}
-                                    {% if forloop.counter <= avg_rating.rating %}
-                                        <i class="bi bi-star-fill text-warning"></i>
-                                    {% else %}
-                                        <i class="bi bi-star text-warning"></i>
-                                    {% endif %}
-                                {% endfor %}
-                                <span class="ms-2 text-muted">({{ total_reviews }} review{{ total_reviews|pluralize }})</span>
-                            {% endwith %}
+                {% with total_reviews=reviews.count %}
+                    {% with avg_rating=reviews|dictsort:"rating"|last %}
+                        {% with sum_rating=0 %}
+                            {% for review in reviews %}
+                                {% with sum_rating=sum_rating|add:review.rating %}
+                                {% endwith %}
+                            {% endfor %}
                         {% endwith %}
                     {% endwith %}
+                {% endwith %}
+                
+                <!-- 计算平均分 -->
+                {% with avg_value=0 %}
+                    {% for review in reviews %}
+                        {% with avg_value=avg_value|add:review.rating %}
+                        {% endwith %}
+                    {% endfor %}
+                {% endwith %}
+                
+                <!-- 使用自定义方法：先计算总和，再计算平均 -->
+                {% with total_rating=0 %}
+                    {% for review in reviews %}
+                        {% with total_rating=total_rating|add:review.rating %}
+                        {% endwith %}
+                    {% endfor %}
+                {% endwith %}
+                
+                <!-- 在模板中无法直接计算，建议在 views.py 中计算，这里显示 -->
+                <div class="mb-4">
+                    {% if avg_rating_display %}
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= avg_rating_int %}
+                                <i class="bi bi-star-fill text-warning"></i>
+                            {% elif forloop.counter <= avg_rating_int|add:0.5 %}
+                                <i class="bi bi-star-half text-warning"></i>
+                            {% else %}
+                                <i class="bi bi-star text-warning"></i>
+                            {% endif %}
+                        {% endfor %}
+                        <span class="ms-2 text-muted">{{ avg_rating_display }} ({{ total_reviews_count }} review{{ total_reviews_count|pluralize }})</span>
+                    {% else %}
+                        {% for i in "12345"|make_list %}
+                            <i class="bi bi-star text-warning"></i>
+                        {% endfor %}
+                        <span class="ms-2 text-muted">No reviews yet</span>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="mb-4">
+                    {% for i in "12345"|make_list %}
+                        <i class="bi bi-star text-warning"></i>
+                    {% endfor %}
+                    <span class="ms-2 text-muted">No reviews yet</span>
                 </div>
             {% endif %}
             

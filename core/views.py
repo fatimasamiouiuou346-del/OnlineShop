@@ -118,11 +118,24 @@ def product_detail(request, pk):
     # 获取该商品的所有评论，按创建时间倒序排序（最新的在前）
     reviews = product.reviews.all().order_by('-created_at')
     
+    # ===== 计算平均评分 =====
+    total_reviews_count = reviews.count()
+    avg_rating_display = 0
+    avg_rating_int = 0
+    
+    if total_reviews_count > 0:
+        total_rating = sum(review.rating for review in reviews)
+        avg_rating_display = round(total_rating / total_reviews_count, 1)
+        avg_rating_int = round(avg_rating_display)
+    
     context = {
         'product': product,
         'related_products': result,
         'user_eligibility': user_eligibility,
         'reviews': reviews,
+        'total_reviews_count': total_reviews_count,
+        'avg_rating_display': avg_rating_display,
+        'avg_rating_int': avg_rating_int,
     }
 
     return render(request, 'core/product_detail.html', context)
