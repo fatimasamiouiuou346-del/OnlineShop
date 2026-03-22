@@ -1,6 +1,11 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container .select2-selection--multiple { min-height: 38px; border-color: #dee2e6; }
+</style>
+
 <div class="row mb-4">
     <h2>Reports and Analytics</h2>
 </div>
@@ -39,12 +44,22 @@
     </div>
 </div>
 
-<div class="row">
+<div class="row mb-5">
     <div class="col-md-12">
         <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white fw-bold">Sales Revenue Over Time</div>
+            <div class="card-header bg-dark text-white fw-bold">Overall Sales Revenue Over Time</div>
             <div class="card-body">
                 <form method="GET" class="row g-3 mb-4">
+                    <input type="hidden" name="cmp_start_date" value="{{ cmp_start_date|default:'' }}">
+                    <input type="hidden" name="cmp_end_date" value="{{ cmp_end_date|default:'' }}">
+                    <input type="hidden" name="cmp_group_by" value="{{ cmp_group_by|default:'day' }}">
+                    <input type="hidden" name="cmp_metric" value="{{ cmp_metric|default:'revenue' }}">
+                    <input type="hidden" name="pie_start_date" value="{{ pie_start_date|default:'' }}">
+                    <input type="hidden" name="pie_end_date" value="{{ pie_end_date|default:'' }}">
+                    {% for pid in selected_pids %}
+                        <input type="hidden" name="selected_products" value="{{ pid }}">
+                    {% endfor %}
+                    
                     <div class="col-md-3">
                         <label class="form-label">Start Date:</label>
                         <input type="date" name="start_date" class="form-control" value="{{ start_date|default:'' }}">
@@ -74,43 +89,272 @@
     </div>
 </div>
 
+<div class="row mb-5">
+    <div class="col-md-12">
+        <div class="card shadow-sm border-info">
+            <div class="card-header bg-info text-dark fw-bold">
+                <i class="bi bi-graph-up"></i> Product Comparison
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3 mb-4 border-bottom pb-4">
+                    <input type="hidden" name="start_date" value="{{ start_date|default:'' }}">
+                    <input type="hidden" name="end_date" value="{{ end_date|default:'' }}">
+                    <input type="hidden" name="group_by" value="{{ group_by|default:'day' }}">
+                    <input type="hidden" name="pie_start_date" value="{{ pie_start_date|default:'' }}">
+                    <input type="hidden" name="pie_end_date" value="{{ pie_end_date|default:'' }}">
+
+                    <div class="col-md-2">
+                        <label class="form-label">Metric:</label>
+                        <select name="cmp_metric" class="form-select">
+                            <option value="revenue" {% if cmp_metric == 'revenue' %}selected{% endif %}>Revenue (¥)</option>
+                            <option value="quantity" {% if cmp_metric == 'quantity' %}selected{% endif %}>Quantity (Units)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Start Date:</label>
+                        <input type="date" name="cmp_start_date" class="form-control" value="{{ cmp_start_date|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">End Date:</label>
+                        <input type="date" name="cmp_end_date" class="form-control" value="{{ cmp_end_date|default:'' }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Group By:</label>
+                        <select name="cmp_group_by" class="form-select">
+                            <option value="day" {% if cmp_group_by == 'day' %}selected{% endif %}>Daily</option>
+                            <option value="month" {% if cmp_group_by == 'month' %}selected{% endif %}>Monthly</option>
+                            <option value="year" {% if cmp_group_by == 'year' %}selected{% endif %}>Yearly</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Compare Products:</label>
+                        <select name="selected_products" class="form-select select2-multiple" multiple="multiple">
+                            {% for p in all_products %}
+                                <option value="{{ p.id }}" {% if p.id|stringformat:"s" in selected_pids %}selected{% endif %}>
+                                    {{ p.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-info w-100 fw-bold">Draw</button>
+                    </div>
+                </form>
+
+                <div>
+                    {% if selected_pids %}
+                        <canvas id="comparisonChart" width="400" height="150"></canvas>
+                    {% else %}
+                        <div class="alert alert-light text-center text-muted py-5">
+                            Search and select products above to draw the comparison chart.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm border-warning">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <span class="fw-bold"><i class="bi bi-pie-chart-fill"></i> Product Sales Share</span>
+                <span class="badge bg-white text-dark shadow-sm">
+                    {{ pie_date_range_info|default:"All Time" }}
+                </span>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3 mb-4 border-bottom pb-4 justify-content-center">
+                    <input type="hidden" name="start_date" value="{{ start_date|default:'' }}">
+                    <input type="hidden" name="end_date" value="{{ end_date|default:'' }}">
+                    <input type="hidden" name="group_by" value="{{ group_by|default:'day' }}">
+                    <input type="hidden" name="cmp_start_date" value="{{ cmp_start_date|default:'' }}">
+                    <input type="hidden" name="cmp_end_date" value="{{ cmp_end_date|default:'' }}">
+                    <input type="hidden" name="cmp_group_by" value="{{ cmp_group_by|default:'day' }}">
+                    <input type="hidden" name="cmp_metric" value="{{ cmp_metric|default:'revenue' }}">
+                    {% for pid in selected_pids %}
+                        <input type="hidden" name="selected_products" value="{{ pid }}">
+                    {% endfor %}
+
+                    <div class="col-md-4">
+                        <label class="form-label">Start Date:</label>
+                        <input type="date" name="pie_start_date" class="form-control" value="{{ pie_start_date|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">End Date:</label>
+                        <input type="date" name="pie_end_date" class="form-control" value="{{ pie_end_date|default:'' }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-warning w-100 fw-bold">Generate</button>
+                    </div>
+                </form>
+
+                <div class="d-flex justify-content-center">
+                    <div style="width: 70%; max-width: 500px;">
+                        <canvas id="salesPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const ctx = document.getElementById('revenueChart').getContext('2d');
-        const revenueChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: {{ labels|safe }},
-                datasets: [{
-                    label: 'Total Revenue (¥)',
-                    data: {{ totals|safe }},
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Revenue (¥)'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Date'
+        // --- 1. Select2 初始化 ---
+        $('.select2-multiple').select2({
+            placeholder: "Search and select products",
+            allowClear: true,
+            width: '100%'
+        });
+
+        // --- 2. 模块 1：原始折线图 ---
+        const mainLabels = {{ labels|safe|default:"[]" }};
+        const mainTotals = {{ totals|safe|default:"[]" }};
+        if (mainLabels.length > 0) {
+            new Chart(document.getElementById('revenueChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: mainLabels,
+                    datasets: [{
+                        label: 'Total Revenue (¥)',
+                        data: mainTotals,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2, fill: true, tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Revenue (¥)' } }
+                    }
+                }
+            });
+        }
+
+        {% if selected_pids %}
+        const cmpLabels = {{ cmp_labels|safe|default:"[]" }};
+        const rawCmpDatasets = {{ cmp_datasets|safe|default:"[]" }};
+// 核心：确保获取到最新的 metric 值
+        const cmpMetric = '{{ cmp_metric|default:"revenue" }}';
+
+// 1. 动态清洗 Dataset 的标签和绑定坐标轴
+        const processedDatasets = rawCmpDatasets.map(ds => {
+            let newLabel = ds.label;
+    // 如果是数量模式，把后端可能带有的 "Revenue" 或 "销售额" 字样替换掉
+            if (cmpMetric === 'quantity') {
+                newLabel = newLabel.replace('Revenue', 'Quantity')
+                           .replace('销售额', '销售数量')
+                           .replace('(¥)', '(Units)');
+            }
+            return {
+                ...ds,
+            label: newLabel,
+        // 关键：强制让数据点对应到当前显示的 Y 轴 ID
+            yAxisID: cmpMetric === 'revenue' ? 'y-revenue' : 'y-quantity',
+            tension: 0.3,
+            fill: false
+        };
+    });
+
+        if (cmpLabels.length > 0) {
+            const ctx = document.getElementById('comparisonChart').getContext('2d');
+    
+    // 如果页面上有旧图表，建议先销毁或确保 ID 唯一，防止渲染重叠
+            if (window.myCmpChart) { window.myCmpChart.destroy(); }
+
+                window.myCmpChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { 
+                        labels: cmpLabels, 
+                        datasets: processedDatasets 
+                     },
+                    options: {
+                        responsive: true,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                // 2. 动态修正 Tooltip（悬停提示）的数值显示
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        let value = context.parsed.y;
+                                        if (cmpMetric === 'revenue') {
+                                            return `${label}: ¥${value.toLocaleString()}`;
+                                        } else {
+                                            return `${label}: ${value} Units`;
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    scales: {
+                        x: { title: { display: true, text: 'Date' } },
+                // 3. 动态控制 Y 轴的显示与标题
+                        'y-revenue': {
+                            display: (cmpMetric === 'revenue'), // 只有 revenue 模式才显示此轴
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Total Revenue (¥)' },
+                            beginAtZero: true
+                        },
+                       'y-quantity': {
+                            display: (cmpMetric === 'quantity'), // 只有 quantity 模式才显示此轴
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Total Quantity (Units)' },
+                            beginAtZero: true
                         }
                     }
                 }
-            }
-        });
+            });
+        }
+        {% endif %}
+
+        // --- 4. 模块 3：扇形图 (增加占比计算) ---
+        const pieLabels = {{ pie_labels|safe|default:"[]" }};
+        const pieData = {{ pie_data|safe|default:"[]" }};
+        const pieColors = {{ pie_colors|safe|default:"[]" }};
+
+        if (pieLabels.length > 0) {
+            const totalSum = pieData.reduce((a, b) => a + b, 0);
+
+            new Chart(document.getElementById('salesPieChart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: pieLabels,
+                    datasets: [{
+                        data: pieData,
+                        backgroundColor: pieColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let value = context.parsed;
+                                    let percentage = ((value / totalSum) * 100).toFixed(1) + '%';
+                                    return ` ${context.label}: ¥${value.toLocaleString()} (${percentage})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

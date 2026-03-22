@@ -7,10 +7,13 @@ from django.http import JsonResponse
 from django.db.models import Q, Sum, F
 from django.db.models.functions import TruncDay, TruncMonth, TruncYear
 from django.utils.dateparse import parse_date
+from django.forms import inlineformset_factory
+from .forms import ProductForm, ProductImageFormSet
 from django.contrib import messages
 
 import datetime
 import json
+import random
 
 from .models import Product, Category, Cart, CartItem, Order, OrderItem, Review
 from .forms import CustomUserCreationForm, ProductForm, OrderStatusForm, ProductImageFormSet
@@ -531,6 +534,131 @@ def analytics_dashboard(request):
         daily_total=Sum('total_amount')
     ).order_by('date_group')
 
+# ==========================================
+    # 模块 2：特定商品销量与销售额对比 (Comparison Chart) - 升级版
+    # ==========================================
+    all_products = Product.objects.all().values('id', 'name')
+    
+    cmp_start_str = request.GET.get('cmp_start_date')
+    cmp_end_str = request.GET.get('cmp_end_date')
+    cmp_group_by = request.GET.get('cmp_group_by', 'day')
+    # 新增：接收用户选择的指标（revenue, quantity, 或 both）
+    cmp_metric = request.GET.get('cmp_metric', 'both') 
+    selected_pids = request.GET.getlist('selected_products')
+
+    cmp_orders = valid_orders
+
+    if cmp_start_str:
+        cmp_start = parse_date(cmp_start_str)
+        if cmp_start: cmp_orders = cmp_orders.filter(created_at__date__gte=cmp_start)
+    if cmp_end_str:
+        cmp_end = parse_date(cmp_end_str)
+        if cmp_end: cmp_orders = cmp_orders.filter(created_at__date__lte=cmp_end)
+
+    if cmp_group_by == 'year':
+        cmp_trunc = TruncYear('order__created_at')
+    elif cmp_group_by == 'month':
+        cmp_trunc = TruncMonth('order__created_at')
+    else:
+        cmp_trunc = TruncDay('order__created_at')
+
+    cmp_datasets = []
+    cmp_labels = []
+    
+    if selected_pids:
+        cmp_items = OrderItem.objects.filter(order__in=cmp_orders, product_id__in=selected_pids)
+        cmp_data = cmp_items.annotate(
+            date_group=cmp_trunc
+        ).values('date_group', 'product_id', 'product_name_snapshot').annotate(
+            daily_qty=Sum('quantity'),
+            daily_rev=Sum(F('quantity') * F('unit_price_snapshot'))
+        ).order_by('date_group')
+
+        unique_dates = sorted(list(set(item['date_group'] for item in cmp_data if item['date_group'])))
+        if cmp_group_by == 'year':
+            cmp_labels = [d.strftime('%Y') for d in unique_dates]
+        elif cmp_group_by == 'month':
+            cmp_labels = [d.strftime('%Y-%m') for d in unique_dates]
+        else:
+            cmp_labels = [d.strftime('%Y-%m-%d') for d in unique_dates]
+
+        product_series = {}
+        for item in cmp_data:
+            pid = str(item['product_id'])
+            pname = item['product_name_snapshot']
+            if pid not in product_series:
+                product_series[pid] = {'name': pname, 'qty': {}, 'rev': {}}
+            
+            d_str = item['date_group'].strftime('%Y') if cmp_group_by=='year' else (item['date_group'].strftime('%Y-%m') if cmp_group_by=='month' else item['date_group'].strftime('%Y-%m-%d'))
+            product_series[pid]['qty'][d_str] = int(item['daily_qty'])
+            product_series[pid]['rev'][d_str] = float(item['daily_rev'])
+
+        for pid, data in product_series.items():
+            r, g, b = random.randint(50, 220), random.randint(50, 220), random.randint(50, 220)
+            color_base = f"{r}, {g}, {b}"
+            
+            # 根据用户的选择 (cmp_metric) 决定放入哪些线段
+            if cmp_metric in ['both', 'revenue']:
+                rev_array = [data['rev'].get(label, 0) for label in cmp_labels]
+                cmp_datasets.append({
+                    'label': f"{data['name']} (Revenue ¥)",
+                    'data': rev_array,
+                    'borderColor': f'rgba({color_base}, 1)',
+                    'backgroundColor': f'rgba({color_base}, 0.1)',
+                    'yAxisID': 'y-revenue',
+                    'tension': 0.3,
+                    'fill': True
+                })
+                
+            if cmp_metric in ['both', 'quantity']:
+                qty_array = [data['qty'].get(label, 0) for label in cmp_labels]
+                cmp_datasets.append({
+                    'label': f"{data['name']} (Quantity)",
+                    'data': qty_array,
+                    'borderColor': f'rgba({color_base}, 0.8)',
+                    'borderDash': [5, 5],
+                    'yAxisID': 'y-quantity',
+                    'tension': 0.3,
+                    'fill': False
+                })
+
+    # ==========================================
+    # 模块 3：所有商品销售额占比扇形图 (Pie Chart)
+    # ==========================================
+    pie_start_str = request.GET.get('pie_start_date')
+    pie_end_str = request.GET.get('pie_end_date')
+    
+    pie_orders = valid_orders
+    
+    if pie_start_str:
+        pie_start = parse_date(pie_start_str)
+        if pie_start: pie_orders = pie_orders.filter(created_at__date__gte=pie_start)
+    if pie_end_str:
+        pie_end = parse_date(pie_end_str)
+        if pie_end: pie_orders = pie_orders.filter(created_at__date__lte=pie_end)
+
+    if pie_start_str and pie_end_str:
+        pie_date_range_info = f"From {pie_start_str} to {pie_end_str}"
+    elif pie_start_str:
+        pie_date_range_info = f"Since {pie_start_str}"
+    elif pie_end_str:
+        pie_date_range_info = f"Until {pie_end_str}"
+    else:
+        pie_date_range_info = "All Time Data"
+
+    # 聚合这段时间内的总销售额
+    pie_stats = OrderItem.objects.filter(order__in=pie_orders) \
+        .values('product_name_snapshot') \
+        .annotate(total_rev=Sum(F('quantity') * F('unit_price_snapshot'))) \
+        .filter(total_rev__gt=0) \
+        .order_by('-total_rev')
+
+    pie_labels = [item['product_name_snapshot'] for item in pie_stats]
+    pie_data = [float(item['total_rev']) for item in pie_stats]
+    pie_colors = [f"rgba({random.randint(50,220)}, {random.randint(100,200)}, {random.randint(150,250)}, 0.7)" for _ in pie_labels]
+
+    
+
     # 准备传给 Chart.js 的数据格式
     labels = []
     totals = []
@@ -545,16 +673,37 @@ def analytics_dashboard(request):
                 labels.append(item['date_group'].strftime('%Y-%m-%d'))
             totals.append(float(item['daily_total']))
 
+    # ==========================================
+    # 更新 Context
+    # ==========================================
     context = {
+        # 原有的 context 变量保持不变...
         'top_products': top_products,
         'labels': labels,
         'totals': totals,
         'start_date': start_date_str,
         'end_date': end_date_str,
         'group_by': group_by,
+        
+        # 追加的新变量
+        'all_products': all_products,
+        'selected_pids': selected_pids,
+        'cmp_start_date': cmp_start_str,
+        'cmp_end_date': cmp_end_str,
+        'cmp_group_by': cmp_group_by,
+        'cmp_labels': json.dumps(cmp_labels),
+        'cmp_datasets': json.dumps(cmp_datasets),
+        'cmp_metric': cmp_metric,
+
+        # Pie Chart 模块参数
+        'pie_start_date': pie_start_str,
+        'pie_end_date': pie_end_str,
+        'pie_labels': json.dumps(pie_labels),
+        'pie_data': json.dumps(pie_data),
+        'pie_colors': json.dumps(pie_colors),
+        'pie_date_range_info': pie_date_range_info,
     }
     return render(request, 'core/analytics.html', context)
-
 
 # ==============================
 # 7. Block T: 訂單評論功能 (每个订单只能评论一次，同时为每个商品创建评论)
