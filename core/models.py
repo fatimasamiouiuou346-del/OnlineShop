@@ -16,6 +16,9 @@ class User(AbstractUser):
         default=Role.CUSTOMER,
         verbose_name="Role"
     )
+    
+    # 添加 full_name 字段方便使用(block)
+    full_name = models.CharField(max_length=100, blank=True, verbose_name="Full Name")
 
 class Address(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
@@ -170,24 +173,21 @@ class OrderStatusHistory(models.Model):
     
     class Meta:
         ordering = ['-changed_at']
-        
-class Review(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.IntegerField("Rating", choices=[(i, str(i)) for i in range(1, 6)])
-    comment = models.TextField("Comment", blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
-# Block T: User Generated Content (Reviews)
+# ==========================================
+# 5. User Generated Content (Reviews)
+# ==========================================
 class Review(models.Model):
     """
-    Block T: 商品评价与评分
+    Block T: 订单评论
+    每个订单只能评论一次
     """
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review', null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews', null=True, blank=True)
     rating = models.IntegerField("Rating", choices=[(i, str(i)) for i in range(1, 6)])
     comment = models.TextField("Comment", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Review by {self.user.username} on {self.product.name} (Rating: {self.rating})"
+        return f"Review for Order #{self.order.id} by {self.user.username}"

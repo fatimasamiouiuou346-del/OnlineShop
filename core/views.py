@@ -7,11 +7,12 @@ from django.http import JsonResponse
 from django.db.models import Q, Sum, F
 from django.db.models.functions import TruncDay, TruncMonth, TruncYear
 from django.utils.dateparse import parse_date
+from django.contrib import messages
 
 import datetime
 import json
 
-from .models import Product, Category, Cart, CartItem, Order, OrderItem
+from .models import Product, Category, Cart, CartItem, Order, OrderItem, Review
 from .forms import CustomUserCreationForm, ProductForm, OrderStatusForm, ProductImageFormSet
 
 # ==============================
@@ -109,17 +110,19 @@ def product_detail(request, pk):
         ).exists()
         
         user_eligibility['has_ordered'] = has_shipped_order
-        user_eligibility['can_review'] = has_shipped_order and not Review.objects.filter(
-            product=product, 
-            user=request.user
-        ).exists()
+        # 商品详情页不显示评论表单，所以 can_review 设为 False
+        user_eligibility['can_review'] = False
 
     result = related_products[:3]
+    
+    # 获取该商品的所有评论，按创建时间倒序排序（最新的在前）
+    reviews = product.reviews.all().order_by('-created_at')
     
     context = {
         'product': product,
         'related_products': result,
-        'user_eligibility': user_eligibility,  # Block T: 傳遞用戶資格
+        'user_eligibility': user_eligibility,
+        'reviews': reviews,
     }
 
     return render(request, 'core/product_detail.html', context)
@@ -274,7 +277,18 @@ def checkout(request):
 @login_required(login_url='core:login')
 def order_list(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'core/order_list.html', {'orders': orders})
+    status_choices = Order.Status.choices
+    current_status = request.GET.get('status')
+    
+    if current_status:
+        orders = orders.filter(status=current_status)
+    
+    return render(request, 'core/order_list.html', {
+        'orders': orders,
+        'status_choices': status_choices,
+        'current_status': current_status
+    })
+
 
 @login_required(login_url='core:login')
 def order_detail(request, pk):
@@ -288,6 +302,9 @@ def cancel_order(request, pk):
         if order.can_cancel:
             order.status = Order.Status.CANCELLED
             order.save() 
+            messages.success(request, "Order cancelled successfully.")
+        else:
+            messages.error(request, "This order cannot be cancelled.")
         return redirect('core:order_detail', pk=pk)
     return redirect('core:order_detail', pk=pk)
 
@@ -525,112 +542,116 @@ def analytics_dashboard(request):
     }
     return render(request, 'core/analytics.html', context)
 
-# Block W
-def keyboard_help(request):
-    """键盘操作帮助页面"""
-    return render(request, 'core/keyboard_help.html')
-
-from django.forms import inlineformset_factory
-from .forms import ProductForm, ProductImageFormSet
 
 # ==============================
-# Block T: 用戶評論功能 (限制購買且出貨才能評論)
+# 7. Block T: 訂單評論功能 (每个订单只能评论一次，同时为每个商品创建评论)
 # ==============================
 
-from django.contrib import messages
-from django.db.models import Q
-from .models import Review, Order
-
-def can_user_review_product(user, product):
+def can_user_review_order(user, order):
     """
-    Block T: 檢查用戶是否可以評論該商品
-    條件：用戶必須有該商品的訂單，且訂單狀態為 Shipped (已出貨)
+    檢查用戶是否可以評論該訂單
+    條件：訂單狀態為已出貨(Shipped)，且尚未評論過
     """
     if not user.is_authenticated:
         return False
     
-    # 檢查用戶是否有該商品的訂單且狀態為 Shipped
-    return Order.objects.filter(
-        user=user,
-        status=Order.Status.SHIPPED,  # 只允許已出貨的訂單
-        items__product=product
-    ).exists()
+    # 检查订单是否属于该用户
+    if order.user != user:
+        return False
+    
+    # 检查订单状态是否为已出貨
+    if order.status != Order.Status.SHIPPED:
+        return False
+    
+    # 检查是否已经评论过（检查该订单是否有评论）
+    if Review.objects.filter(order=order, user=user).exists():
+        return False
+    
+    return True
 
 
 @login_required(login_url='core:login')
-def add_review(request, product_id):
+def add_order_review(request, order_id):
     """
-    Block T: 用戶添加評論 (只有購買且出貨才能評論)
+    为订单添加评论，同时为订单中的每个商品创建评论记录
     """
-    product = get_object_or_404(Product, id=product_id, is_active=True)
+    order = get_object_or_404(Order, id=order_id, user=request.user)
     
-    # Block T: 檢查用戶是否有資格評論
-    if not can_user_review_product(request.user, product):
-        messages.error(request, "You can only review products you have purchased and received.")
-        return redirect('core:product_detail', pk=product_id)
+    # 检查是否可以评论
+    if not can_user_review_order(request.user, order):
+        messages.error(request, "You cannot review this order. Only shipped orders can be reviewed once.")
+        return redirect('core:order_detail', pk=order_id)
     
     if request.method == 'POST':
         rating = request.POST.get('rating')
         comment = request.POST.get('comment')
         
-        # 簡單驗證
+        if not rating or not comment:
+            messages.error(request, "Please provide both rating and comment.")
+            return redirect('core:order_detail', pk=order_id)
+        
+        # 为订单中的每个商品创建评论
+        for item in order.items.all():
+            if item.product:
+                Review.objects.create(
+                    order=order,
+                    user=request.user,
+                    product=item.product,  # 关联到商品
+                    rating=int(rating),
+                    comment=comment
+                )
+        
+        messages.success(request, "Your review has been submitted successfully!")
+    
+    return redirect('core:order_detail', pk=order_id)
+
+
+@login_required(login_url='core:login')
+def edit_order_review(request, review_id):
+    """
+    编辑订单评论，同时更新该订单下所有商品的评论
+    """
+    review = get_object_or_404(Review, id=review_id, user=request.user)
+    order = review.order
+    
+    if request.method == 'POST':
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment')
+        
         if rating and comment:
-            # 檢查用戶是否已經評論過這個商品（可選：只允許一次）
-            existing_review = Review.objects.filter(product=product, user=request.user).first()
-            if existing_review:
-                messages.warning(request, "You have already reviewed this product. You can edit your existing review.")
-                return redirect('core:product_detail', pk=product_id)
-            
-            # 創建新評論
-            Review.objects.create(
-                product=product,
-                user=request.user,
+            # 更新该订单下所有商品的评论
+            Review.objects.filter(order=order, user=request.user).update(
                 rating=int(rating),
                 comment=comment
             )
-            messages.success(request, "Your review has been submitted successfully!")
-        else:
-            messages.error(request, "Please provide both rating and comment.")
-    
-    return redirect('core:product_detail', pk=product_id)
-
-
-@login_required(login_url='core:login')
-def edit_review(request, review_id):
-    """
-    Block T: 用戶編輯自己的評論
-    """
-    review = get_object_or_404(Review, id=review_id, user=request.user)
-    
-    # Block T: 再次確認用戶仍然有資格評論（可選，防止出貨狀態被改變）
-    if not can_user_review_product(request.user, review.product):
-        messages.error(request, "You are no longer eligible to review this product.")
-        return redirect('core:product_detail', pk=review.product.id)
-    
-    if request.method == 'POST':
-        rating = request.POST.get('rating')
-        comment = request.POST.get('comment')
-        
-        if rating and comment:
-            review.rating = int(rating)
-            review.comment = comment
-            review.save()
             messages.success(request, "Your review has been updated!")
         else:
             messages.error(request, "Please provide both rating and comment.")
         
-        return redirect('core:product_detail', pk=review.product.id)
+        return redirect('core:order_detail', pk=order.id)
     
-    return redirect('core:product_detail', pk=review.product.id)
+    return redirect('core:order_detail', pk=order.id)
 
 
 @login_required(login_url='core:login')
-def delete_review(request, review_id):
+def delete_order_review(request, review_id):
     """
-    Block T: 用戶刪除自己的評論
+    删除订单评论，同时删除该订单下所有商品的评论
     """
     review = get_object_or_404(Review, id=review_id, user=request.user)
-    product_id = review.product.id
-    review.delete()
+    order_id = review.order.id
+    
+    # 删除该订单下所有评论
+    Review.objects.filter(order=review.order, user=request.user).delete()
+    
     messages.success(request, "Your review has been deleted.")
-    return redirect('core:product_detail', pk=product_id)
+    return redirect('core:order_detail', pk=order_id)
+
+
+# ==============================
+# 8. Block W: 键盘帮助页面
+# ==============================
+
+def keyboard_help(request):
+    """键盘操作帮助页面"""
+    return render(request, 'core/keyboard_help.html')

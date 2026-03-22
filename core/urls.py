@@ -57,11 +57,11 @@ urlpatterns = [
     path('analytics/', views.analytics_dashboard, name='analytics'),
 
     # ==============================
-    # Block T: 用户评论 URL
+    # Block T: 订单评论 URL
     # ==============================
-    path('product/<int:product_id>/add-review/', views.add_review, name='add_review'),
-    path('review/<int:review_id>/edit/', views.edit_review, name='edit_review'),
-    path('review/<int:review_id>/delete/', views.delete_review, name='delete_review'),
+    path('order/<int:order_id>/add-review/', views.add_order_review, name='add_order_review'),
+    path('review/<int:review_id>/edit/', views.edit_order_review, name='edit_order_review'),
+    path('review/<int:review_id>/delete/', views.delete_order_review, name='delete_order_review'),
 
     # Block W: 键盘帮助页面
     path('keyboard-help/', views.keyboard_help, name='keyboard_help'),

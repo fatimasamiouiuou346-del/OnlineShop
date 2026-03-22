@@ -162,6 +162,7 @@
                     No related products.
                 </div>
             {% endfor %}
+        </div>
     </div>
 </div>
 
@@ -213,6 +214,7 @@
                             <div>
                                 <strong>{{ review.user.full_name|default:review.user.username }}</strong>
                                 <small class="text-muted ms-2">{{ review.created_at|date:"Y-m-d H:i" }}</small>
+                                <!-- 订单号已隐藏，不再显示 -->
                             </div>
                             
                             <!-- Block T: 如果是當前用戶的評論，顯示編輯/刪除按鈕 -->
@@ -221,7 +223,7 @@
                                 <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editReviewModal{{ review.id }}">
                                     Edit
                                 </button>
-                                <form action="{% url 'core:delete_review' review.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this review?');">
+                                <form action="{% url 'core:delete_order_review' review.id %}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this review?');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-outline-danger">Delete</button>
                                 </form>
@@ -231,7 +233,7 @@
                             <div class="modal fade" id="editReviewModal{{ review.id }}" tabindex="-1">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
-                                        <form action="{% url 'core:edit_review' review.id %}" method="post">
+                                        <form action="{% url 'core:edit_order_review' review.id %}" method="post">
                                             {% csrf_token %}
                                             <div class="modal-header">
                                                 <h5 class="modal-title">Edit Your Review</h5>
@@ -286,49 +288,15 @@
                 {% endfor %}
             </div>
             
-            <!-- Block T: 添加評論表單（僅對有資格用戶顯示） -->
+            <!-- Block T: 提示用户去哪里写评论（商品详情页不再有评论表单） -->
             {% if user.is_authenticated %}
-                {% with can_review=user_eligibility.can_review %}
-                    {% if can_review %}
-                        <div class="card mt-4">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">Write a Review</h5>
-                            </div>
-                            <div class="card-body">
-                                <form action="{% url 'core:add_review' product.id %}" method="post">
-                                    {% csrf_token %}
-                                    <div class="mb-3">
-                                        <label class="form-label">Your Rating</label>
-                                        <select name="rating" class="form-select" required>
-                                            <option value="">Choose rating...</option>
-                                            {% for i in "12345"|make_list %}
-                                            <option value="{{ forloop.counter }}">{{ forloop.counter }} Star{% if forloop.counter != 1 %}s{% endif %}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">Your Review</label>
-                                        <textarea name="comment" class="form-control" rows="4" placeholder="Share your thoughts about this product..." required></textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Submit Review</button>
-                                </form>
-                            </div>
-                        </div>
-                    {% else %}
-                        <div class="alert alert-secondary mt-4">
-                            {% if user_eligibility.has_ordered %}
-                                <i class="bi bi-info-circle"></i> 
-                                You can review this product after your order has been <strong>shipped</strong>.
-                            {% else %}
-                                <i class="bi bi-info-circle"></i> 
-                                You can only review products you have purchased.
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                {% endwith %}
+                <div class="alert alert-info mt-4">
+                    <i class="bi bi-info-circle"></i> 
+                    To write a review, please go to your <a href="{% url 'core:order_list' %}" class="alert-link">Order History</a> and review shipped orders.
+                </div>
             {% else %}
                 <div class="alert alert-secondary mt-4">
-                    <a href="{% url 'core:login' %}?next={{ request.path }}" class="alert-link">Login</a> to write a review.
+                    <a href="{% url 'core:login' %}?next={{ request.path }}" class="alert-link">Login</a> to see reviews and write your own.
                 </div>
             {% endif %}
         {% endwith %}
