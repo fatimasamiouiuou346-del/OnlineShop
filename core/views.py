@@ -5,7 +5,7 @@ from django.db import transaction
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db.models import Q, Sum, F
-from django.db.models.functions import TruncDay, TruncMonth, TruncYear
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear
 from django.utils.dateparse import parse_date
 from django.forms import inlineformset_factory
 from .forms import ProductForm, ProductImageFormSet
@@ -506,7 +506,7 @@ def analytics_dashboard(request):
     # ------------------
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
-    group_by = request.GET.get('group_by', 'day') # 选项：day, month, year
+    group_by = request.GET.get('group_by', 'day') 
 
     filtered_orders = valid_orders
 
@@ -525,6 +525,8 @@ def analytics_dashboard(request):
         trunc_func = TruncYear('created_at')
     elif group_by == 'month':
         trunc_func = TruncMonth('created_at')
+    elif group_by == 'week':
+        trunc_func = TruncWeek('created_at')
     else:
         trunc_func = TruncDay('created_at')
 
@@ -559,6 +561,8 @@ def analytics_dashboard(request):
         cmp_trunc = TruncYear('order__created_at')
     elif cmp_group_by == 'month':
         cmp_trunc = TruncMonth('order__created_at')
+    elif cmp_group_by == 'week':
+        cmp_trunc = TruncWeek('order__created_at')
     else:
         cmp_trunc = TruncDay('order__created_at')
 
@@ -579,6 +583,8 @@ def analytics_dashboard(request):
             cmp_labels = [d.strftime('%Y') for d in unique_dates]
         elif cmp_group_by == 'month':
             cmp_labels = [d.strftime('%Y-%m') for d in unique_dates]
+        elif cmp_group_by == 'week':
+            cmp_labels = [f"{d.strftime('%Y-%m-%d')} (W{d.isocalendar()[1]})" for d in unique_dates]
         else:
             cmp_labels = [d.strftime('%Y-%m-%d') for d in unique_dates]
 
@@ -589,7 +595,12 @@ def analytics_dashboard(request):
             if pid not in product_series:
                 product_series[pid] = {'name': pname, 'qty': {}, 'rev': {}}
             
-            d_str = item['date_group'].strftime('%Y') if cmp_group_by=='year' else (item['date_group'].strftime('%Y-%m') if cmp_group_by=='month' else item['date_group'].strftime('%Y-%m-%d'))
+            d_str = item['date_group'].strftime('%Y') if cmp_group_by=='year' \
+                else (item['date_group'].strftime('%Y-%m') if cmp_group_by=='month' \
+                    else (f"{item['date_group'].strftime('%Y-%m-%d')} (W{item['date_group'].isocalendar()[1]})" if cmp_group_by=='week' \
+                        else item['date_group'].strftime('%Y-%m-%d')
+                        )
+                    )
             product_series[pid]['qty'][d_str] = int(item['daily_qty'])
             product_series[pid]['rev'][d_str] = float(item['daily_rev'])
 
@@ -669,6 +680,8 @@ def analytics_dashboard(request):
                 labels.append(item['date_group'].strftime('%Y'))
             elif group_by == 'month':
                 labels.append(item['date_group'].strftime('%Y-%m'))
+            elif group_by == 'week':
+                labels.append(f"{item['date_group'].strftime('%Y-%m-%d')} (W{item['date_group'].isocalendar()[1]})")
             else:
                 labels.append(item['date_group'].strftime('%Y-%m-%d'))
             totals.append(float(item['daily_total']))

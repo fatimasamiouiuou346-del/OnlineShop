@@ -72,6 +72,7 @@
                         <label class="form-label">Group By:</label>
                         <select name="group_by" class="form-select">
                             <option value="day" {% if group_by == 'day' %}selected{% endif %}>Daily</option>
+                            <option value="week" {% if group_by == 'week' %}selected{% endif %}>Weekly</option>
                             <option value="month" {% if group_by == 'month' %}selected{% endif %}>Monthly</option>
                             <option value="year" {% if group_by == 'year' %}selected{% endif %}>Yearly</option>
                         </select>
@@ -123,6 +124,7 @@
                         <label class="form-label">Group By:</label>
                         <select name="cmp_group_by" class="form-select">
                             <option value="day" {% if cmp_group_by == 'day' %}selected{% endif %}>Daily</option>
+                            <option value="week" {% if cmp_group_by == 'week' %}selected{% endif %}>Weekly</option>
                             <option value="month" {% if cmp_group_by == 'month' %}selected{% endif %}>Monthly</option>
                             <option value="year" {% if cmp_group_by == 'year' %}selected{% endif %}>Yearly</option>
                         </select>
