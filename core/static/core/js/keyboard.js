@@ -45,29 +45,18 @@
                 'select:not([disabled])',
                 'textarea:not([disabled])',
                 'button:not([disabled])',
-                
                 'a[href]',
-                
                 '.navbar a', '.navbar button', '.navbar .nav-link',
                 '.navbar-brand', '.navbar-toggler',
-                
                 '[tabindex]:not([tabindex="-1"])',
-                
                 '.card.h-100', '.product-card',
-                
                 '.list-group-item',
-                
                 '[role="button"]',
-                
                 'tr[tabindex="0"]',
-                
                 '.pagination a', '.page-link',
-                
                 '#minInput', '#maxInput', '.price-range input',
-                
                 '#filterButton', '#clearButton',
                 '.btn-secondary', '.btn-light',
-                
                 'select[name="category"]',
                 '.form-select'
             ];
@@ -88,6 +77,121 @@
                        el.offsetWidth > 0 && 
                        el.offsetHeight > 0;
             });
+            
+            // 應用自定義排序
+            this.applyCustomSorting();
+        }
+        
+        applyCustomSorting() {
+            const customContainer = document.querySelector('[data-keyboard-sort="custom"]');
+            
+            if (customContainer) {
+                // ✅ 優先檢查是否有精確的順序定義
+                const focusOrder = customContainer.getAttribute('data-focus-order');
+                
+                if (focusOrder) {
+                    // 方法1：使用精確的 ID 順序
+                    const orderedIds = focusOrder.split(',').map(id => id.trim());
+                    const orderedElements = [];
+                    const missingElements = [];
+                    
+                    orderedIds.forEach(id => {
+                        const element = document.getElementById(id);
+                        if (element && customContainer.contains(element)) {
+                            // 檢查元素是否可見且可用
+                            const style = window.getComputedStyle(element);
+                            const isValid = style.display !== 'none' && 
+                                           style.visibility !== 'hidden' && 
+                                           element.offsetWidth > 0 && 
+                                           element.offsetHeight > 0;
+                            
+                            if (isValid) {
+                                orderedElements.push(element);
+                            } else {
+                                console.log(`⚠️ 元素 ${id} 存在但不可見，已跳過`);
+                                missingElements.push(id);
+                            }
+                        } else {
+                            console.log(`⚠️ 元素 ${id} 不存在於當前頁面，已跳過`);
+                            missingElements.push(id);
+                        }
+                    });
+                    
+                    // 獲取容器內所有可聚焦元素
+                    const allContainerElements = Array.from(customContainer.querySelectorAll(
+                        'input, button, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+                    ));
+                    
+                    // 獲取未被指定的其他元素（動態內容）
+                    const unspecifiedElements = allContainerElements.filter(el => {
+                        const hasId = el.id && orderedIds.includes(el.id);
+                        const style = window.getComputedStyle(el);
+                        return !hasId && 
+                               style.display !== 'none' && 
+                               style.visibility !== 'hidden' && 
+                               el.offsetWidth > 0 && 
+                               el.offsetHeight > 0;
+                    });
+                    
+                    // 獲取容器外的元素
+                    const outsideElements = this.focusableElements.filter(el => 
+                        !customContainer.contains(el)
+                    );
+                    
+                    // 組合：指定順序的元素 + 未指定的元素 + 外部元素
+                    this.focusableElements = [...orderedElements, ...unspecifiedElements, ...outsideElements];
+                    
+                    console.log('🎯 已應用精確順序');
+                    console.log(`📋 指定元素: ${orderedElements.length} 個 (${orderedIds.filter(id => !missingElements.includes(id)).join(', ')})`);
+                    if (missingElements.length > 0) {
+                        console.log(`⚠️ 跳過元素: ${missingElements.join(', ')}`);
+                    }
+                    if (unspecifiedElements.length > 0) {
+                        console.log(`🔄 動態元素: ${unspecifiedElements.length} 個`);
+                    }
+                    
+                } else {
+                    // 方法2：使用優先級排序（如果沒有精確順序）
+                    const containerElements = Array.from(customContainer.querySelectorAll(
+                        'input, button, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
+                    )).filter(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.display !== 'none' && 
+                               style.visibility !== 'hidden' && 
+                               el.offsetWidth > 0 && 
+                               el.offsetHeight > 0;
+                    });
+                    
+                    const outsideElements = this.focusableElements.filter(el => 
+                        !customContainer.contains(el)
+                    );
+                    
+                    const priorityMap = {
+                        'input': 1,
+                        'button': 2,
+                        'a': 3,
+                        'select': 4,
+                        'textarea': 5
+                    };
+                    
+                    containerElements.sort((a, b) => {
+                        const tagA = a.tagName.toLowerCase();
+                        const tagB = b.tagName.toLowerCase();
+                        const priorityA = priorityMap[tagA] || 99;
+                        const priorityB = priorityMap[tagB] || 99;
+                        
+                        if (priorityA !== priorityB) {
+                            return priorityA - priorityB;
+                        }
+                        
+                        return containerElements.indexOf(a) - containerElements.indexOf(b);
+                    });
+                    
+                    this.focusableElements = [...containerElements, ...outsideElements];
+                    
+                    console.log('🎯 已應用優先級排序，容器內元素數量:', containerElements.length);
+                }
+            }
         }
         
         handleKeyDown(e) {
@@ -221,20 +325,32 @@
         handleNavigationModeKeyDown(e) {
             const target = e.target;
             
-            if (e.key.startsWith('Arrow')) {
+            // 左右鍵移動 1 步，上下鍵移動 10 步
+            if (e.key === 'ArrowLeft') {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                switch(e.key) {
-                    case 'ArrowDown':
-                    case 'ArrowRight':
-                        this.moveToNext();
-                        break;
-                    case 'ArrowUp':
-                    case 'ArrowLeft':
-                        this.moveToPrevious();
-                        break;
-                }
+                this.moveByOffset(-1);
+                return;
+            }
+            
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.moveByOffset(1);
+                return;
+            }
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.moveByOffset(-10);
+                return;
+            }
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.moveByOffset(10);
                 return;
             }
             
@@ -273,6 +389,191 @@
                     e.preventDefault();
                     this.moveToLast();
                     break;
+            }
+        }
+        
+        // 移動指定步數，跳過無效元素
+        moveByOffset(offset) {
+            if (this.focusableElements.length === 0) {
+                this.collectFocusableElements();
+                if (this.focusableElements.length === 0) return;
+            }
+            
+            // 如果當前沒有選中任何元素，從頭開始
+            if (this.currentIndex === -1) {
+                if (offset > 0) {
+                    this.focusElement(0);
+                } else {
+                    this.focusElement(this.focusableElements.length - 1);
+                }
+                return;
+            }
+            
+            let newIndex = this.currentIndex + offset;
+            
+            // 處理循環邊界
+            if (newIndex >= this.focusableElements.length) {
+                newIndex = newIndex % this.focusableElements.length;
+            } else if (newIndex < 0) {
+                newIndex = this.focusableElements.length + (newIndex % this.focusableElements.length);
+                if (newIndex === this.focusableElements.length) newIndex = 0;
+            }
+            
+            // 驗證目標元素是否仍然有效
+            let targetElement = this.focusableElements[newIndex];
+            let attempts = 0;
+            const maxAttempts = this.focusableElements.length;
+            
+            // 如果目標元素無效（被隱藏或禁用），繼續移動直到找到有效元素
+            while (!this.isElementValid(targetElement) && attempts < maxAttempts) {
+                newIndex = (newIndex + (offset > 0 ? 1 : -1) + this.focusableElements.length) % this.focusableElements.length;
+                targetElement = this.focusableElements[newIndex];
+                attempts++;
+            }
+            
+            if (this.isElementValid(targetElement)) {
+                this.focusElement(newIndex);
+                console.log(`🎯 移動 ${offset} 步，新索引: ${newIndex}`);
+            } else {
+                console.warn('⚠️ 未找到有效的可聚焦元素');
+            }
+        }
+        
+        // 檢查元素是否有效（可見且可用）
+        isElementValid(element) {
+            if (!element) return false;
+            
+            // 檢查元素是否仍在 DOM 中
+            if (!document.body.contains(element)) return false;
+            
+            // 檢查顯示狀態
+            const style = window.getComputedStyle(element);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            
+            // 檢查尺寸
+            if (element.offsetWidth <= 0 || element.offsetHeight <= 0) return false;
+            
+            // 檢查禁用狀態
+            if (element.disabled) return false;
+            
+            // 檢查是否可聚焦（對於非表單元素）
+            if (element.tabIndex === -1 && 
+                element.tagName !== 'INPUT' && 
+                element.tagName !== 'BUTTON' && 
+                element.tagName !== 'A' && 
+                element.tagName !== 'SELECT' && 
+                element.tagName !== 'TEXTAREA') {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        moveToNext() {
+            this.moveByOffset(1);
+        }
+        
+        moveToPrevious() {
+            this.moveByOffset(-1);
+        }
+        
+        moveToFirst() {
+            if (this.focusableElements.length === 0) {
+                this.collectFocusableElements();
+            }
+            
+            // 找到第一個有效元素
+            let firstValidIndex = 0;
+            for (let i = 0; i < this.focusableElements.length; i++) {
+                if (this.isElementValid(this.focusableElements[i])) {
+                    firstValidIndex = i;
+                    break;
+                }
+            }
+            this.focusElement(firstValidIndex);
+        }
+        
+        moveToLast() {
+            if (this.focusableElements.length === 0) {
+                this.collectFocusableElements();
+            }
+            
+            // 找到最後一個有效元素
+            let lastValidIndex = this.focusableElements.length - 1;
+            for (let i = this.focusableElements.length - 1; i >= 0; i--) {
+                if (this.isElementValid(this.focusableElements[i])) {
+                    lastValidIndex = i;
+                    break;
+                }
+            }
+            this.focusElement(lastValidIndex);
+        }
+        
+        focusElement(index) {
+            if (index >= 0 && index < this.focusableElements.length) {
+                const element = this.focusableElements[index];
+                
+                // 再次驗證元素有效性
+                if (!this.isElementValid(element)) {
+                    console.warn('⚠️ 目標元素無效，重新收集可聚焦元素');
+                    this.collectFocusableElements();
+                    // 遞迴調用，但避免無限循環
+                    if (this.focusableElements.length > 0 && index < this.focusableElements.length) {
+                        this.focusElement(index);
+                    }
+                    return;
+                }
+                
+                element.focus();
+                this.currentIndex = index;
+                
+                element.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                
+                this.updateFocusStyle();
+            }
+        }
+        
+        activateCurrent() {
+            if (this.currentIndex >= 0 && this.currentIndex < this.focusableElements.length) {
+                const element = this.focusableElements[this.currentIndex];
+                
+                if (!this.isElementValid(element)) {
+                    console.warn('⚠️ 當前元素無效，刷新列表');
+                    this.refresh();
+                    return;
+                }
+                
+                if (element.tagName === 'INPUT' || 
+                    element.tagName === 'SELECT' || 
+                    element.tagName === 'TEXTAREA') {
+                    return;
+                }
+                
+                element.click();
+                this.addActivateEffect(element);
+            }
+        }
+        
+        addActivateEffect(element) {
+            element.classList.add('keyboard-activated');
+            setTimeout(() => {
+                element.classList.remove('keyboard-activated');
+            }, 200);
+        }
+        
+        updateFocusStyle() {
+            this.focusableElements.forEach(el => {
+                el.classList.remove('keyboard-focus');
+            });
+            
+            if (this.currentIndex >= 0 && this.currentIndex < this.focusableElements.length) {
+                const currentEl = this.focusableElements[this.currentIndex];
+                if (currentEl && this.isElementValid(currentEl)) {
+                    currentEl.classList.add('keyboard-focus');
+                }
             }
         }
         
@@ -326,87 +627,27 @@
             }, 3000);
         }
         
-        moveToNext() {
-            if (this.focusableElements.length === 0) {
-                this.collectFocusableElements();
-            }
+        refresh() {
+            const previousIndex = this.currentIndex;
+            const previousElement = previousIndex >= 0 ? this.focusableElements[previousIndex] : null;
             
-            let newIndex = (this.currentIndex + 1) % this.focusableElements.length;
-            if (this.currentIndex === -1) newIndex = 0;
+            this.collectFocusableElements();
             
-            this.focusElement(newIndex);
-        }
-        
-        moveToPrevious() {
-            if (this.focusableElements.length === 0) {
-                this.collectFocusableElements();
-            }
-            
-            let newIndex = this.currentIndex - 1;
-            if (newIndex < 0) newIndex = this.focusableElements.length - 1;
-            if (this.currentIndex === -1) newIndex = this.focusableElements.length - 1;
-            
-            this.focusElement(newIndex);
-        }
-        
-        moveToFirst() {
-            this.focusElement(0);
-        }
-        
-        moveToLast() {
-            this.focusElement(this.focusableElements.length - 1);
-        }
-        
-        focusElement(index) {
-            if (index >= 0 && index < this.focusableElements.length) {
-                const element = this.focusableElements[index];
-                element.focus();
-                this.currentIndex = index;
-                
-                element.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
-                
-                this.updateFocusStyle();
-            }
-        }
-        
-        activateCurrent() {
-            if (this.currentIndex >= 0 && this.currentIndex < this.focusableElements.length) {
-                const element = this.focusableElements[this.currentIndex];
-                
-                if (element.tagName === 'INPUT' || 
-                    element.tagName === 'SELECT' || 
-                    element.tagName === 'TEXTAREA') {
+            // 嘗試恢復之前的焦點
+            if (previousElement && this.isElementValid(previousElement)) {
+                const newIndex = this.focusableElements.indexOf(previousElement);
+                if (newIndex !== -1) {
+                    this.currentIndex = newIndex;
+                    this.focusElement(newIndex);
                     return;
                 }
-                
-                element.click();
-                this.addActivateEffect(element);
             }
-        }
-        
-        addActivateEffect(element) {
-            element.classList.add('keyboard-activated');
-            setTimeout(() => {
-                element.classList.remove('keyboard-activated');
-            }, 200);
-        }
-        
-        updateFocusStyle() {
-            this.focusableElements.forEach(el => {
-                el.classList.remove('keyboard-focus');
-            });
             
-            if (this.currentIndex >= 0 && this.currentIndex < this.focusableElements.length) {
-                const currentEl = this.focusableElements[this.currentIndex];
-                currentEl.classList.add('keyboard-focus');
+            // 如果之前的元素不存在，嘗試保持大致位置
+            if (previousIndex >= 0 && this.focusableElements.length > 0) {
+                const newIndex = Math.min(previousIndex, this.focusableElements.length - 1);
+                this.focusElement(newIndex);
             }
-        }
-        
-        refresh() {
-            this.collectFocusableElements();
         }
     }
     
@@ -483,7 +724,8 @@
         hint.className = 'keyboard-hint';
         hint.innerHTML = `
             <span style="color: #0d6efd; font-weight: bold;">⌨️ Keyboard Navigation</span>
-            <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> move
+            <kbd>←</kbd> <kbd>→</kbd> move 1 step
+            <kbd>↑</kbd> <kbd>↓</kbd> move 10 steps
             <kbd>Enter</kbd> select/input
             <span style="color: #ffc107;">🔽 Dropdown: ↑↓ select Enter confirm</span>
         `;
