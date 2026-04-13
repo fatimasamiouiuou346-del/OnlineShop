@@ -53,7 +53,7 @@
                             </a>
                             <a href="{% url 'core:analytics' %}" class="btn btn-outline-info me-2">📊 Analytics</a>
                             <a href="{% url 'core:keyboard_help' %}" class="btn btn-outline-light me-2" title="List of Keyboard Operation">
-                                <i class="bi bi-keyboard"></i> <span class="d-none d-lg-inline">快捷键</span>
+                                <i class="bi bi-keyboard"></i> <span class="d-none d-lg-inline">Guide</span>
                             </a>
                         {% else %}
                             <!-- 顾客专属：My Orders 和 Cart -->
@@ -70,8 +70,8 @@
                                 </span>
                                 {% endif %}
                             </a>
-                            <a href="{% url 'core:keyboard_help' %}" class="nav-link me-2" title="键盘操作指南">
-                                <i class="bi bi-keyboard"></i>
+                            <a href="{% url 'core:keyboard_help' %}" class="btn btn-outline-light me-2" title="List of Keyboard Operation">
+                                <i class="bi bi-keyboard"></i> <span class="d-none d-lg-inline">Guide</span>
                             </a>
                         {% endif %}
                         <!-- =========================== -->
