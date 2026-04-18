@@ -69,32 +69,19 @@ def product_list(request):
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
 
-    related_products = []
-    result = []
-    
-    if product.brand:
-        related_products += Product.objects.filter(
-            brand=product.brand, 
+    related_products = Product.objects.filter(
+            Q(brand=product.brand) | 
+            Q(category=product.category) | 
+            Q(origin=product.origin) | 
+            Q(material=product.material),
             is_active=True
-        ).exclude(pk=pk)[:3]
+        ).exclude(pk=pk).distinct()[:3]
 
-    if product.category:
-        related_products += Product.objects.filter(
-            category=product.category, 
-            is_active=True
-        ).exclude(pk=pk)[:3]
-
-    if product.origin:
-        related_products += Product.objects.filter(
-            origin=product.origin, 
-            is_active=True
-        ).exclude(pk=pk)[:3]
-    
-    if product.material:
-        related_products += Product.objects.filter(
-            material=product.material, 
-            is_active=True
-        ).exclude(pk=pk)[:3]
+    context = {
+        'product': product,
+        'related_products': related_products
+    }
+    return render(request, 'core/product_detail.html', context)
 
     # ==============================
     # Block T: 檢查用戶是否可以評論
