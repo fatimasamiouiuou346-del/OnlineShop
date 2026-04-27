@@ -77,12 +77,6 @@ def product_detail(request, pk):
             is_active=True
         ).exclude(pk=pk).distinct()[:3]
 
-    context = {
-        'product': product,
-        'related_products': related_products
-    }
-    return render(request, 'core/product_detail.html', context)
-
     # ==============================
     # Block T: 檢查用戶是否可以評論
     # ==============================
@@ -102,8 +96,6 @@ def product_detail(request, pk):
         user_eligibility['has_ordered'] = has_shipped_order
         # 商品详情页不显示评论表单，所以 can_review 设为 False
         user_eligibility['can_review'] = False
-
-    result = related_products[:3]
     
     # 获取该商品的所有评论，按创建时间倒序排序（最新的在前）
     reviews = product.reviews.all().order_by('-created_at')
@@ -120,7 +112,7 @@ def product_detail(request, pk):
     
     context = {
         'product': product,
-        'related_products': result,
+        'related_products': related_products,
         'user_eligibility': user_eligibility,
         'reviews': reviews,
         'total_reviews_count': total_reviews_count,
